@@ -1,17 +1,17 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Runtime "mo:core/Runtime";
+import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
-import Principal "mo:core/Principal";
-import Nat "mo:core/Nat";
-import Runtime "mo:core/Runtime";
-import Iter "mo:core/Iter";
+
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-// Use migration if persistent state exists.
 
 actor {
   /////////////////////
@@ -27,29 +27,30 @@ actor {
   // TYPES           //
   /////////////////////
 
-  // User Profile (Extended)
+  // User Profile (Updated)
   public type UserProfile = {
     name : Text;
-    email : Text;
-    age : Nat;
-    weight : Float; // in kg
-    height : Float; // in cm
-    bmi : Float;
-    phone : ?Text;
+    mobileNumber : Text;
+    email : ?Text;
+    age : ?Nat;
+    weight : ?Float; // in kg, made optional
+    height : ?Float; // in cm, made optional
+    bmi : ?Float; // made optional
     address : ?Text;
     gender : ?Text;
     dietaryPreferences : ?Text;
     dietaryRestrictions : ?Text;
-    calorieTarget : ?Nat;
+    idealWeight : ?Float; // New field - optional
+    dailyCalories : ?Nat; // New field - optional
   };
 
-  // Admin User Record Type (NEW)
+  // Admin User Record Type (Updated to use new UserProfile)
   public type AdminUserRecord = {
     principal : Principal;
     profile : UserProfile;
   };
 
-  // Menu Item (UPDATED)
+  // Menu Item
   public type MenuItem = {
     id : Nat;
     name : Text;
@@ -69,7 +70,7 @@ actor {
     unitPrice : Float;
   };
 
-  // Order Status - EXTENDED with #outForDelivery
+  // Order Status
   public type OrderStatus = {
     #pending;
     #confirmed;
@@ -92,18 +93,18 @@ actor {
 
   // Subscription Plan
   public type SubscriptionPlan = {
-    #weekly; // 6 salads
-    #monthly; // 24 salads
+    #weekly;
+    #monthly;
   };
 
-  // Subscription Status - EXTENDED
+  // Subscription Status
   public type SubscriptionStatus = {
     #active;
     #paused;
     #cancelled;
   };
 
-  // Subscription - EXTENDED
+  // Subscription
   public type Subscription = {
     id : Nat;
     userId : Principal;
@@ -114,8 +115,6 @@ actor {
     endDate : Int;
     status : SubscriptionStatus;
   };
-
-  // NEW TYPES FOR PHASE 3
 
   // Ingredient Item
   public type IngredientItem = {
@@ -168,7 +167,7 @@ actor {
     totalCustomers : Nat;
   };
 
-  // New SaladIngredient type
+  // Salad Ingredient mapping
   public type SaladIngredient = {
     saladId : Nat;
     ingredientId : Nat;
@@ -190,9 +189,7 @@ actor {
   // STATE           //
   /////////////////////
 
-  // Internal state for initialization
   let accessControlState = AccessControl.initState();
-
   include MixinAuthorization(accessControlState);
 
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -204,7 +201,6 @@ actor {
   let deliveryRiders = Map.empty<Nat, DeliveryRider>();
   let orderDeliveries = Map.empty<Nat, OrderDelivery>();
 
-  // New saladIngredients map (key: saladId, value: [SaladIngredient])
   let saladIngredients = Map.empty<Nat, [SaladIngredient]>();
 
   var nextSubscriptionId = 1;
@@ -265,14 +261,14 @@ actor {
   /////////////////////
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view profiles");
     };
     userProfiles.get(caller);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.add(caller, profile);
@@ -285,16 +281,10 @@ actor {
     userProfiles.get(user);
   };
 
-  ////////////////////////////
-  // PHASE 4: ADMIN USER    //
-  //        MANAGEMENT      //
-  ////////////////////////////
-
   public query ({ caller }) func adminGetAllUsers() : async [AdminUserRecord] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view all user profiles");
     };
-
     let allUsers = userProfiles.toArray();
     allUsers.map(
       func(entry) {
@@ -305,14 +295,14 @@ actor {
   };
 
   public shared ({ caller }) func adminCreateUser(user : Principal, profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can create user profiles for others");
     };
     userProfiles.add(user, profile);
   };
 
   public shared ({ caller }) func adminUpdateUser(user : Principal, profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can update user profiles for others");
     };
     switch (userProfiles.get(user)) {
@@ -326,7 +316,7 @@ actor {
   };
 
   public shared ({ caller }) func adminDeleteUser(user : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can delete user profiles");
     };
     switch (userProfiles.get(user)) {
@@ -379,21 +369,21 @@ actor {
   };
 
   public shared ({ caller }) func addMenuItem(item : MenuItem) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can add menu items");
     };
     menuItems.add(item.id, item);
   };
 
   public shared ({ caller }) func updateMenuItem(item : MenuItem) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can update menu items");
     };
     menuItems.add(item.id, item);
   };
 
   public shared ({ caller }) func deleteMenuItem(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can delete menu items");
     };
     switch (menuItems.get(id)) {
@@ -405,7 +395,7 @@ actor {
   };
 
   public shared ({ caller }) func toggleAvailability(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can toggle availability");
     };
     switch (menuItems.get(id)) {
@@ -436,7 +426,6 @@ actor {
       notes;
     };
 
-    // First pass: Validate all ingredient quantities
     for (item in items.values()) {
       switch (saladIngredients.get(item.menuItemId)) {
         case (null) {};
@@ -458,7 +447,6 @@ actor {
       };
     };
 
-    // Second pass: Deduct all ingredient quantities
     for (item in items.values()) {
       switch (saladIngredients.get(item.menuItemId)) {
         case (null) {};
@@ -487,7 +475,6 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view orders");
     };
-
     let allOrders = orders.values().toArray();
     allOrders.filter(
       func(order) { order.userId == caller }
@@ -543,7 +530,6 @@ actor {
       Runtime.trap("Unauthorized: Only users can subscribe");
     };
 
-    // Cancel existing active subscriptions
     let active = subscriptions.values().find(
       func(sub) { sub.userId == caller and sub.status == #active }
     );
@@ -749,71 +735,71 @@ actor {
   };
 
   ////////////////////////////
-  // PHASE 3: INVENTORY     //
+  // INVENTORY              //
   ////////////////////////////
 
   public shared ({ caller }) func addIngredient(item : IngredientItem) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can add ingredients");
     };
     ingredients.add(item.id, item);
   };
 
   public shared ({ caller }) func updateIngredient(item : IngredientItem) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can update ingredients");
     };
     ingredients.add(item.id, item);
   };
 
   public shared ({ caller }) func deleteIngredient(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can delete ingredients");
     };
     ingredients.remove(id);
   };
 
   public query ({ caller }) func getAllIngredients() : async [IngredientItem] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view ingredients");
     };
     ingredients.values().toArray();
   };
 
   ////////////////////////////
-  // PHASE 3: COUPONS       //
+  // COUPONS                //
   ////////////////////////////
 
   public shared ({ caller }) func addCoupon(coupon : Coupon) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can add coupons");
     };
     coupons.add(coupon.id, coupon);
   };
 
   public shared ({ caller }) func updateCoupon(coupon : Coupon) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can update coupons");
     };
     coupons.add(coupon.id, coupon);
   };
 
   public shared ({ caller }) func deleteCoupon(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can delete coupons");
     };
     coupons.remove(id);
   };
 
   public query ({ caller }) func getAllCoupons() : async [Coupon] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view all coupons");
     };
     coupons.values().toArray();
   };
 
   public shared ({ caller }) func applyCoupon(code : Text) : async Float {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can apply coupons");
     };
 
@@ -858,32 +844,32 @@ actor {
   };
 
   ////////////////////////////
-  // PHASE 3: DELIVERY      //
+  // DELIVERY               //
   ////////////////////////////
 
   public shared ({ caller }) func addDeliveryRider(rider : DeliveryRider) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can add delivery riders");
     };
     deliveryRiders.add(rider.id, rider);
   };
 
   public shared ({ caller }) func updateDeliveryRider(rider : DeliveryRider) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can update delivery riders");
     };
     deliveryRiders.add(rider.id, rider);
   };
 
   public query ({ caller }) func getAllDeliveryRiders() : async [DeliveryRider] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view delivery riders");
     };
     deliveryRiders.values().toArray();
   };
 
   public shared ({ caller }) func assignRiderToOrder(orderId : Nat, riderId : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can assign riders to orders");
     };
 
@@ -907,7 +893,7 @@ actor {
   };
 
   public query ({ caller }) func getOrderDelivery(orderId : Nat) : async ?OrderDelivery {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view order deliveries");
     };
 
@@ -923,18 +909,18 @@ actor {
   };
 
   public query ({ caller }) func getAllOrderDeliveries() : async [OrderDelivery] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view all order deliveries");
     };
     orderDeliveries.values().toArray();
   };
 
   ////////////////////////////
-  // PHASE 3: DASHBOARD     //
+  // DASHBOARD              //
   ////////////////////////////
 
   public query ({ caller }) func getDashboardStats() : async DashboardStats {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized: Only admins can view dashboard stats");
     };
 

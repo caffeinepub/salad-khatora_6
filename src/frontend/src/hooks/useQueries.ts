@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AppSettings,
   MenuItem,
   Order,
   OrderItem,
@@ -139,6 +140,31 @@ export function useCancelSubscription() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
+    },
+  });
+}
+
+// ─── App Settings ─────────────────────────────────────────────────────────────
+
+export function useAppSettings() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AppSettings>({
+    queryKey: ["appSettings"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getAppSettings();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useApplyCoupon() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      if (!actor) throw new Error("Not connected");
+      const discount = await actor.applyCoupon(code);
+      return discount;
     },
   });
 }

@@ -112,18 +112,19 @@ export type SubscriptionStatus = { 'active' : null } |
   { 'cancelled' : null } |
   { 'paused' : null };
 export interface UserProfile {
-  'age' : bigint,
-  'bmi' : number,
-  'weight' : number,
-  'height' : number,
-  'calorieTarget' : [] | [bigint],
+  'age' : [] | [bigint],
+  'bmi' : [] | [number],
+  'weight' : [] | [number],
+  'height' : [] | [number],
   'dietaryPreferences' : [] | [string],
   'name' : string,
-  'email' : string,
+  'mobileNumber' : string,
+  'email' : [] | [string],
   'dietaryRestrictions' : [] | [string],
   'address' : [] | [string],
+  'idealWeight' : [] | [number],
   'gender' : [] | [string],
-  'phone' : [] | [string],
+  'dailyCalories' : [] | [bigint],
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |

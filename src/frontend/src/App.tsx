@@ -3,9 +3,11 @@ import Navigation from "@/components/Navigation";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/context/CartContext";
+import CheckoutPage from "@/pages/CheckoutPage";
 import KioskPage from "@/pages/KioskPage";
 import LandingPage from "@/pages/LandingPage";
 import MenuPage from "@/pages/MenuPage";
+import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
 import OrdersPage from "@/pages/OrdersPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
@@ -77,6 +79,18 @@ const kioskRoute = createRoute({
   component: KioskPage,
 });
 
+const checkoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/checkout",
+  component: CheckoutPage,
+});
+
+const orderConfirmationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/order-confirmation",
+  component: OrderConfirmationPage,
+});
+
 // Admin layout route (nested under root)
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -145,6 +159,8 @@ const routeTree = rootRoute.addChildren([
   ordersRoute,
   subscriptionsRoute,
   kioskRoute,
+  checkoutRoute,
+  orderConfirmationRoute,
   adminLayoutRoute.addChildren([
     adminDashboardRoute,
     adminOrdersRoute,

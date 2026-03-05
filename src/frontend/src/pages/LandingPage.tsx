@@ -42,19 +42,19 @@ const stats = [
 
 const testimonials = [
   {
-    name: "Ayesha Khan",
+    name: "Priya Sharma",
     role: "Fitness Coach",
     text: "Finally a salad place that gets nutrition right. The BMI tracker is a game-changer!",
     rating: 5,
   },
   {
-    name: "Hassan Raza",
+    name: "Rohan Mehta",
     role: "Software Engineer",
     text: "Order daily for lunch. The Caesar is incredible and delivery is always on time.",
     rating: 5,
   },
   {
-    name: "Sara Ahmed",
+    name: "Ananya Iyer",
     role: "Yoga Instructor",
     text: "The custom bowl builder lets me hit my macros perfectly. Absolutely love it.",
     rating: 5,
@@ -80,15 +80,15 @@ export default function LandingPage() {
               transition={{ duration: 0.7 }}
             >
               <Badge className="mb-6 bg-white/20 text-white border-white/30 hover:bg-white/30 text-xs font-medium px-3 py-1">
-                🥗 Lahore's Freshest Salad Bar
+                🥗 Your City's Freshest Salad Bar
               </Badge>
               <h1 className="font-display text-5xl md:text-6xl font-bold leading-[1.1] mb-6 text-balance">
                 Eat Fresh. <span className="text-green-200">Feel Amazing.</span>
               </h1>
               <p className="text-white/80 text-lg mb-8 leading-relaxed max-w-md">
-                Hand-crafted salads made with seasonal ingredients, served daily
-                across Lahore. Track your health metrics and build a better you
-                — one bowl at a time.
+                Hand-crafted salads made with seasonal ingredients, delivered
+                fresh in your city. Track your health metrics and build a better
+                you — one bowl at a time.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button
@@ -427,8 +427,8 @@ export default function LandingPage() {
               Ready to eat fresh?
             </h2>
             <p className="text-white/80 mb-8 max-w-md mx-auto">
-              Join thousands of health-conscious Lahoris who've made Salad
-              Khatora their go-to daily meal.
+              Join hundreds of health-conscious people who've made Salad Khatora
+              their go-to daily meal.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button

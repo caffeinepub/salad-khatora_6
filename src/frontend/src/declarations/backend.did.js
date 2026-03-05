@@ -57,18 +57,19 @@ export const SubscriptionStatus = IDL.Variant({
   'paused' : IDL.Null,
 });
 export const UserProfile = IDL.Record({
-  'age' : IDL.Nat,
-  'bmi' : IDL.Float64,
-  'weight' : IDL.Float64,
-  'height' : IDL.Float64,
-  'calorieTarget' : IDL.Opt(IDL.Nat),
+  'age' : IDL.Opt(IDL.Nat),
+  'bmi' : IDL.Opt(IDL.Float64),
+  'weight' : IDL.Opt(IDL.Float64),
+  'height' : IDL.Opt(IDL.Float64),
   'dietaryPreferences' : IDL.Opt(IDL.Text),
   'name' : IDL.Text,
-  'email' : IDL.Text,
+  'mobileNumber' : IDL.Text,
+  'email' : IDL.Opt(IDL.Text),
   'dietaryRestrictions' : IDL.Opt(IDL.Text),
   'address' : IDL.Opt(IDL.Text),
+  'idealWeight' : IDL.Opt(IDL.Float64),
   'gender' : IDL.Opt(IDL.Text),
-  'phone' : IDL.Opt(IDL.Text),
+  'dailyCalories' : IDL.Opt(IDL.Nat),
 });
 export const AdminUserRecord = IDL.Record({
   'principal' : IDL.Principal,
@@ -300,18 +301,19 @@ export const idlFactory = ({ IDL }) => {
     'paused' : IDL.Null,
   });
   const UserProfile = IDL.Record({
-    'age' : IDL.Nat,
-    'bmi' : IDL.Float64,
-    'weight' : IDL.Float64,
-    'height' : IDL.Float64,
-    'calorieTarget' : IDL.Opt(IDL.Nat),
+    'age' : IDL.Opt(IDL.Nat),
+    'bmi' : IDL.Opt(IDL.Float64),
+    'weight' : IDL.Opt(IDL.Float64),
+    'height' : IDL.Opt(IDL.Float64),
     'dietaryPreferences' : IDL.Opt(IDL.Text),
     'name' : IDL.Text,
-    'email' : IDL.Text,
+    'mobileNumber' : IDL.Text,
+    'email' : IDL.Opt(IDL.Text),
     'dietaryRestrictions' : IDL.Opt(IDL.Text),
     'address' : IDL.Opt(IDL.Text),
+    'idealWeight' : IDL.Opt(IDL.Float64),
     'gender' : IDL.Opt(IDL.Text),
-    'phone' : IDL.Opt(IDL.Text),
+    'dailyCalories' : IDL.Opt(IDL.Nat),
   });
   const AdminUserRecord = IDL.Record({
     'principal' : IDL.Principal,

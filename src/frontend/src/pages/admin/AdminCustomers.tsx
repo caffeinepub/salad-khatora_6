@@ -122,7 +122,7 @@ function statusColor(status: string) {
 interface CustomerFormState {
   principalId: string;
   name: string;
-  phone: string;
+  mobileNumber: string;
   email: string;
   address: string;
   height: string;
@@ -136,7 +136,7 @@ interface CustomerFormState {
 const EMPTY_FORM: CustomerFormState = {
   principalId: "",
   name: "",
-  phone: "",
+  mobileNumber: "",
   email: "",
   address: "",
   height: "",
@@ -152,8 +152,8 @@ function profileToForm(record: AdminUserRecord): CustomerFormState {
   return {
     principalId: record.principal.toString(),
     name: p.name,
-    phone: p.phone ?? "",
-    email: p.email,
+    mobileNumber: p.mobileNumber ?? "",
+    email: p.email ?? "",
     address: p.address ?? "",
     height: String(p.height || ""),
     weight: String(p.weight || ""),
@@ -168,23 +168,32 @@ function formToProfile(form: CustomerFormState): UserProfile {
   const weight = Number.parseFloat(form.weight) || 0;
   const height = Number.parseFloat(form.height) || 0;
   const age = Number.parseInt(form.age) || 0;
-  const bmi = calcBmi(weight, height);
-  const calorieTarget =
-    bmi > 0
-      ? BigInt(Math.round(10 * weight + 6.25 * height - 5 * age + 5))
-      : undefined;
+  const bmiVal = calcBmi(weight, height);
+  const bmi = bmiVal > 0 ? bmiVal : undefined;
+  const idealWeight = weight && height ? 22 * (height / 100) ** 2 : undefined;
+
+  let dailyCalories: bigint | undefined = undefined;
+  if (bmi !== undefined) {
+    let cals: number;
+    if (bmi < 18.5) cals = 2200;
+    else if (bmi < 25) cals = 2000;
+    else if (bmi < 30) cals = 1800;
+    else cals = 1500;
+    dailyCalories = BigInt(cals);
+  }
 
   return {
     name: form.name.trim(),
-    email: form.email.trim(),
-    phone: form.phone.trim() || undefined,
+    mobileNumber: form.mobileNumber.trim(),
+    email: form.email.trim() || undefined,
     address: form.address.trim() || undefined,
-    height,
-    weight,
-    age: BigInt(age),
+    height: height || undefined,
+    weight: weight || undefined,
+    age: age ? BigInt(age) : undefined,
     gender: form.gender || undefined,
     bmi,
-    calorieTarget,
+    idealWeight,
+    dailyCalories,
     dietaryPreferences: form.dietaryPreferences.trim() || undefined,
     dietaryRestrictions: form.dietaryRestrictions.trim() || undefined,
   };
@@ -258,9 +267,7 @@ function CustomerForm({
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="cf-email">
-            Email <span className="text-destructive">*</span>
-          </Label>
+          <Label htmlFor="cf-email">Email</Label>
           <Input
             id="cf-email"
             type="email"
@@ -278,13 +285,13 @@ function CustomerForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label htmlFor="cf-phone">Phone Number</Label>
+          <Label htmlFor="cf-mobileNumber">Mobile Number</Label>
           <Input
-            id="cf-phone"
-            placeholder="+92 300 0000000"
-            value={form.phone}
-            onChange={set("phone")}
-            data-ocid="admin.customers.form.phone_input"
+            id="cf-mobileNumber"
+            placeholder="+91 98765 43210"
+            value={form.mobileNumber}
+            onChange={set("mobileNumber")}
+            data-ocid="admin.customers.form.mobile_number_input"
           />
         </div>
         <div className="space-y-1.5">
@@ -315,7 +322,7 @@ function CustomerForm({
         <Label htmlFor="cf-address">Address</Label>
         <Textarea
           id="cf-address"
-          placeholder="Street, City, Country"
+          placeholder="Flat, Street, Area, City"
           rows={2}
           value={form.address}
           onChange={set("address")}
@@ -435,7 +442,7 @@ function ViewSheet({
     [subscriptions, principalStr],
   );
 
-  const bmi = calcBmi(p.weight, p.height);
+  const bmi = calcBmi(p.weight ?? 0, p.height ?? 0);
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
@@ -471,17 +478,17 @@ function ViewSheet({
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Email", value: p.email },
-                  { label: "Phone", value: p.phone ?? "—" },
+                  { label: "Email", value: p.email ?? "—" },
+                  { label: "Mobile", value: p.mobileNumber ?? "—" },
                   { label: "Gender", value: p.gender ?? "—" },
                   { label: "Age", value: p.age ? `${Number(p.age)} yrs` : "—" },
                   { label: "Height", value: p.height ? `${p.height} cm` : "—" },
                   { label: "Weight", value: p.weight ? `${p.weight} kg` : "—" },
                   { label: "BMI", value: bmi > 0 ? String(bmi) : "—" },
                   {
-                    label: "Calorie Target",
-                    value: p.calorieTarget
-                      ? `${Number(p.calorieTarget)} kcal`
+                    label: "Daily Calories",
+                    value: p.dailyCalories
+                      ? `${Number(p.dailyCalories)} kcal`
                       : "—",
                   },
                 ].map(({ label, value }) => (
@@ -674,8 +681,8 @@ export default function AdminCustomers() {
     return users.filter(
       (u) =>
         u.profile.name.toLowerCase().includes(q) ||
-        u.profile.email.toLowerCase().includes(q) ||
-        (u.profile.phone ?? "").includes(q) ||
+        (u.profile.email ?? "").toLowerCase().includes(q) ||
+        (u.profile.mobileNumber ?? "").includes(q) ||
         u.principal.toString().toLowerCase().includes(q),
     );
   }, [users, search]);
@@ -708,8 +715,7 @@ export default function AdminCustomers() {
     if (!editRecord && !form.principalId.trim())
       errs.principalId = "Principal ID is required";
     if (!form.name.trim()) errs.name = "Name is required";
-    if (!form.email.trim()) errs.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = "Invalid email format";
 
     if (!editRecord && form.principalId.trim()) {
@@ -871,7 +877,7 @@ export default function AdminCustomers() {
                     "#",
                     "Name",
                     "Email",
-                    "Phone",
+                    "Mobile",
                     "Age",
                     "Gender",
                     "Actions",
@@ -906,10 +912,10 @@ export default function AdminCustomers() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
-                        {p.email}
+                        {p.email ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {p.phone ?? "—"}
+                        {p.mobileNumber ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {p.age ? `${Number(p.age)}` : "—"}

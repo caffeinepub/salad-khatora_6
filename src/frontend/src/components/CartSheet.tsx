@@ -9,13 +9,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/context/CartContext";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { usePlaceOrder } from "@/hooks/useQueries";
-import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 interface CartSheetProps {
@@ -24,54 +22,23 @@ interface CartSheetProps {
 }
 
 export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
-  const { items, updateQuantity, removeItem, clearCart, total } = useCart();
+  const { items, updateQuantity, removeItem, total } = useCart();
   const { identity, login } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const [notes, setNotes] = useState("");
-  const placeOrder = usePlaceOrder();
+  const navigate = useNavigate();
 
-  const handlePlaceOrder = async () => {
+  function handleProceedToCheckout() {
     if (!isAuthenticated) {
       login();
       return;
     }
     if (items.length === 0) {
-      toast.error("Cart is empty. Add items before placing an order.");
+      toast.error("Cart is empty. Add items before checking out.");
       return;
     }
-
-    const orderItems = items.map((item) => ({
-      menuItemId: item.menuItemId,
-      quantity: BigInt(item.quantity),
-      unitPrice: Number(item.unitPrice) || 0,
-    }));
-
-    try {
-      await placeOrder.mutateAsync({
-        items: orderItems,
-        totalAmount: total,
-        notes: notes.trim() || null,
-      });
-      clearCart();
-      setNotes("");
-      onOpenChange(false);
-      toast.success("Order placed successfully!");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("Cart is empty")) {
-        toast.error("Cart is empty. Add items before placing an order.");
-      } else if (message.includes("Insufficient stock")) {
-        toast.error("Some items are out of stock. Please update your cart.");
-      } else if (message.includes("Unauthorized")) {
-        toast.error("Please log in to place an order.");
-      } else if (message.includes("Not connected")) {
-        toast.error("Connection lost. Please refresh the page and try again.");
-      } else {
-        toast.error("Failed to place order. Please try again.");
-        console.error("Order placement error:", message);
-      }
-    }
-  };
+    onOpenChange(false);
+    void navigate({ to: "/checkout" });
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -168,7 +135,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
               </div>
             </ScrollArea>
 
-            <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
+            <div className="px-6 pb-4 space-y-3 border-t border-border pt-4">
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground text-sm">Subtotal</span>
@@ -176,24 +143,9 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                   ₹{total.toLocaleString("en-IN")}
                 </span>
               </div>
-
-              <div>
-                <label
-                  htmlFor="cart-notes"
-                  className="text-xs font-medium text-muted-foreground mb-1 block"
-                >
-                  Special instructions (optional)
-                </label>
-                <Textarea
-                  id="cart-notes"
-                  placeholder="Any special requests or notes..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="resize-none text-sm"
-                  rows={2}
-                  data-ocid="cart.notes_input"
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Delivery charges, taxes and coupons applied at checkout
+              </p>
             </div>
           </>
         )}
@@ -202,21 +154,16 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
           {items.length > 0 && (
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 gap-2"
-              onClick={handlePlaceOrder}
-              disabled={placeOrder.isPending || items.length === 0}
-              data-ocid="cart.place_order_button"
+              onClick={handleProceedToCheckout}
+              disabled={items.length === 0}
+              data-ocid="cart.checkout_button"
             >
-              {placeOrder.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Placing Order...
-                </>
-              ) : !isAuthenticated ? (
-                "Login to Place Order"
+              {!isAuthenticated ? (
+                "Login to Checkout"
               ) : (
                 <>
-                  <ShoppingBag className="h-4 w-4" />
-                  Place Order · ₹{total.toLocaleString("en-IN")}
+                  <ArrowRight className="h-4 w-4" />
+                  Proceed to Checkout · ₹{total.toLocaleString("en-IN")}
                 </>
               )}
             </Button>

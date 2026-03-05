@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -30,7 +32,7 @@ import {
   useAssignRiderToOrder,
   useUpdateOrderStatus,
 } from "@/hooks/useAdminQueries";
-import { Loader2, RefreshCw, Truck } from "lucide-react";
+import { Eye, Loader2, MapPin, RefreshCw, Truck } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -67,6 +69,30 @@ function truncatePrincipal(p: { toString(): string }) {
   return s.length > 12 ? `${s.slice(0, 8)}…${s.slice(-4)}` : s;
 }
 
+interface ParsedOrderNotes {
+  deliveryAddress?: {
+    fullName?: string;
+    mobile?: string;
+    house?: string;
+    street?: string;
+    landmark?: string;
+    city?: string;
+    pincode?: string;
+  };
+  paymentMethod?: string;
+  couponCode?: string | null;
+  notes?: string | null;
+}
+
+function parseOrderNotes(notes?: string): ParsedOrderNotes | null {
+  if (!notes) return null;
+  try {
+    return JSON.parse(notes) as ParsedOrderNotes;
+  } catch {
+    return null;
+  }
+}
+
 export default function AdminOrders() {
   const { data: orders, isLoading, refetch, isFetching } = useAllOrders();
   const { data: deliveries } = useAllOrderDeliveries();
@@ -79,6 +105,16 @@ export default function AdminOrders() {
     orderId: bigint | null;
   }>({ open: false, orderId: null });
   const [selectedRider, setSelectedRider] = useState<string>("");
+
+  // View details modal state
+  const [viewModal, setViewModal] = useState<{
+    open: boolean;
+    orderId: bigint | null;
+  }>({ open: false, orderId: null });
+
+  const viewOrder = viewModal.orderId
+    ? orders?.find((o) => o.id === viewModal.orderId)
+    : null;
 
   function getAssignedRiderName(orderId: bigint): string | null {
     const delivery = deliveries?.find((d) => d.orderId === orderId);
@@ -109,6 +145,10 @@ export default function AdminOrders() {
   function openAssignModal(orderId: bigint) {
     setAssignModal({ open: true, orderId });
     setSelectedRider("");
+  }
+
+  function openViewModal(orderId: bigint) {
+    setViewModal({ open: true, orderId });
   }
 
   function handleAssignRider() {
@@ -260,7 +300,7 @@ export default function AdminOrders() {
                           onValueChange={(v) => handleStatusChange(order.id, v)}
                         >
                           <SelectTrigger
-                            className="h-8 w-40 text-xs border-border"
+                            className="h-8 w-36 text-xs border-border"
                             data-ocid="admin.orders.status.select"
                           >
                             <SelectValue />
@@ -286,6 +326,16 @@ export default function AdminOrders() {
                         >
                           <Truck className="h-3 w-3" />
                           Rider
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs border-border"
+                          onClick={() => openViewModal(order.id)}
+                          data-ocid="admin.orders.view.button"
+                        >
+                          <Eye className="h-3 w-3" />
+                          View
                         </Button>
                       </div>
                     </TableCell>
@@ -371,6 +421,206 @@ export default function AdminOrders() {
                 )}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Order Details Modal */}
+      <Dialog
+        open={viewModal.open}
+        onOpenChange={(open) => setViewModal({ open, orderId: null })}
+      >
+        <DialogContent
+          className="max-w-lg"
+          data-ocid="admin.orders.view.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              Order #{viewOrder?.id.toString() ?? "—"}
+            </DialogTitle>
+          </DialogHeader>
+          {viewOrder ? (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-4 pr-2">
+                {/* Status + Date */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-muted/30 rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                      Status
+                    </p>
+                    <Badge
+                      className={`${
+                        STATUS_BADGE[viewOrder.status] ??
+                        STATUS_BADGE[OrderStatus.pending]
+                      } border text-xs font-semibold`}
+                    >
+                      {STATUS_OPTIONS.find((s) => s.value === viewOrder.status)
+                        ?.label ?? viewOrder.status}
+                    </Badge>
+                  </div>
+                  <div className="bg-muted/30 rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                      Date
+                    </p>
+                    <p className="text-sm font-medium text-foreground">
+                      {formatDate(viewOrder.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Customer */}
+                <div className="bg-muted/30 rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                    Customer Principal
+                  </p>
+                  <p className="font-mono text-xs text-foreground break-all">
+                    {viewOrder.userId.toString()}
+                  </p>
+                </div>
+
+                {/* Items */}
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-2">
+                    Items
+                  </p>
+                  <div className="space-y-2">
+                    {viewOrder.items.map((item) => (
+                      <div
+                        key={item.menuItemId.toString()}
+                        className="flex justify-between items-center py-1.5 px-3 bg-muted/20 rounded-lg text-sm"
+                      >
+                        <span className="text-foreground font-medium">
+                          Item #{item.menuItemId.toString()}
+                        </span>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <span>×{item.quantity.toString()}</span>
+                          <span className="font-semibold text-foreground">
+                            ₹
+                            {(
+                              item.unitPrice * Number(item.quantity)
+                            ).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Total */}
+                <div className="flex justify-between items-center">
+                  <span className="font-display text-sm font-bold text-foreground">
+                    Total Amount
+                  </span>
+                  <span className="font-display text-lg font-bold text-primary">
+                    ₹{viewOrder.totalAmount.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                {/* Delivery address + payment from notes */}
+                {(() => {
+                  const parsed = parseOrderNotes(viewOrder.notes);
+                  if (!parsed) return null;
+                  return (
+                    <>
+                      {parsed.paymentMethod && (
+                        <div className="bg-muted/30 rounded-xl p-3">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                            Payment Method
+                          </p>
+                          <p className="text-sm font-medium text-foreground capitalize">
+                            {parsed.paymentMethod === "cod"
+                              ? "Cash on Delivery"
+                              : parsed.paymentMethod === "upi"
+                                ? "UPI Payment"
+                                : parsed.paymentMethod}
+                          </p>
+                        </div>
+                      )}
+
+                      {parsed.deliveryAddress && (
+                        <div className="bg-muted/30 rounded-xl p-3">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-2 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            Delivery Address
+                          </p>
+                          <div className="text-sm text-foreground space-y-0.5">
+                            {parsed.deliveryAddress.fullName && (
+                              <p className="font-medium">
+                                {parsed.deliveryAddress.fullName}
+                              </p>
+                            )}
+                            {parsed.deliveryAddress.mobile && (
+                              <p className="text-muted-foreground">
+                                📞 {parsed.deliveryAddress.mobile}
+                              </p>
+                            )}
+                            <p className="text-muted-foreground">
+                              {[
+                                parsed.deliveryAddress.house,
+                                parsed.deliveryAddress.street,
+                                parsed.deliveryAddress.landmark,
+                                parsed.deliveryAddress.city,
+                                parsed.deliveryAddress.pincode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsed.couponCode && (
+                        <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                            Coupon Applied
+                          </p>
+                          <p className="text-sm font-mono font-semibold text-emerald-700">
+                            {parsed.couponCode}
+                          </p>
+                        </div>
+                      )}
+
+                      {parsed.notes && (
+                        <div className="bg-muted/30 rounded-xl p-3">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                            Special Instructions
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {parsed.notes}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* Raw notes fallback */}
+                {viewOrder.notes && !parseOrderNotes(viewOrder.notes) && (
+                  <div className="bg-muted/30 rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                      Notes
+                    </p>
+                    <p className="text-sm text-foreground">{viewOrder.notes}</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Order not found.
+            </p>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setViewModal({ open: false, orderId: null })}
+              data-ocid="admin.orders.view.close_button"
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

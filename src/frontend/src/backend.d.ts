@@ -96,18 +96,19 @@ export interface IngredientItem {
     quantity: bigint;
 }
 export interface UserProfile {
-    age: bigint;
-    bmi: number;
-    weight: number;
-    height: number;
-    calorieTarget?: bigint;
+    age?: bigint;
+    bmi?: number;
+    weight?: number;
+    height?: number;
     dietaryPreferences?: string;
     name: string;
-    email: string;
+    mobileNumber: string;
+    email?: string;
     dietaryRestrictions?: string;
     address?: string;
+    idealWeight?: number;
     gender?: string;
-    phone?: string;
+    dailyCalories?: bigint;
 }
 export enum CouponDiscountType {
     fixed = "fixed",

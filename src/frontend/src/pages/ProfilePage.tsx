@@ -39,6 +39,7 @@ import {
   ShoppingBag,
   TrendingUp,
   User,
+  Utensils,
   Weight,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -178,6 +179,47 @@ function BMICard({ bmi }: { bmi: number }) {
   );
 }
 
+function CaloriesCard({ dailyCalories }: { dailyCalories: bigint }) {
+  const cals = Number(dailyCalories);
+  const perMeal = Math.round(cals / 4);
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="rounded-2xl border p-6 bg-emerald-50 border-emerald-200"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="text-sm text-muted-foreground font-medium">
+            Daily Calorie Target
+          </p>
+          <div className="font-display text-4xl font-bold text-emerald-600 mt-1">
+            {cals.toLocaleString("en-IN")}
+            <span className="text-lg font-normal ml-1">kcal</span>
+          </div>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+          <Flame className="h-5 w-5 text-emerald-600" />
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2 mt-4">
+        {["Breakfast", "Lunch", "Snack", "Dinner"].map((meal) => (
+          <div
+            key={meal}
+            className="rounded-lg bg-emerald-100/70 px-2 py-2 text-center"
+          >
+            <div className="flex items-center justify-center mb-1">
+              <Utensils className="h-3 w-3 text-emerald-600" />
+            </div>
+            <p className="text-[10px] text-emerald-700 font-medium">{meal}</p>
+            <p className="text-xs font-bold text-emerald-800">{perMeal} kcal</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function ProfilePage() {
   const { identity, login, isLoggingIn, isInitializing } =
     useInternetIdentity();
@@ -188,14 +230,13 @@ export default function ProfilePage() {
 
   const [form, setForm] = useState({
     name: "",
-    phone: "",
+    mobileNumber: "",
     email: "",
     address: "",
     age: "",
     weight: "",
     height: "",
     gender: "",
-    calorieTarget: "",
     dietaryPreferences: "",
     dietaryRestrictions: "",
   });
@@ -205,29 +246,31 @@ export default function ProfilePage() {
   // Populate from existing profile
   useEffect(() => {
     if (existingProfile) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const p = existingProfile as any;
+      const p = existingProfile;
       setForm({
         name: p.name ?? "",
-        phone: p.phone ?? "",
+        mobileNumber: p.mobileNumber ?? "",
         email: p.email ?? "",
         address: p.address ?? "",
         age: p.age?.toString() ?? "",
         weight: p.weight?.toString() ?? "",
         height: p.height?.toString() ?? "",
         gender: p.gender ?? "",
-        calorieTarget: p.calorieTarget?.toString() ?? "",
-        dietaryPreferences: (p.dietaryPreferences ?? []).join(", "),
-        dietaryRestrictions: (p.dietaryRestrictions ?? []).join(", "),
+        dietaryPreferences: p.dietaryPreferences ?? "",
+        dietaryRestrictions: p.dietaryRestrictions ?? "",
       });
     }
   }, [existingProfile]);
 
   // Live BMI calculation
   useEffect(() => {
-    const w = Number.parseFloat(form.weight);
-    const h = Number.parseFloat(form.height);
-    setLiveBMI(computeBMI(w, h));
+    const w = Number(form.weight) || 0;
+    const h = Number(form.height) || 0;
+    if (w > 0 && h > 0) {
+      setLiveBMI(computeBMI(w, h));
+    } else {
+      setLiveBMI(null);
+    }
   }, [form.weight, form.height]);
 
   const handleChange = (
@@ -238,42 +281,75 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const w = Number.parseFloat(form.weight);
-    const h = Number.parseFloat(form.height);
-    const bmi = computeBMI(w, h);
 
-    const parseCsv = (val: string) =>
-      val
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+    // Validation
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!form.mobileNumber.trim()) {
+      toast.error("Mobile number is required");
+      return;
+    }
+    if (form.mobileNumber.trim().length < 10) {
+      toast.error("Please enter a valid mobile number");
+      return;
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Safe numeric conversions
+    const w = Number(form.weight) || undefined;
+    const h = Number(form.height) || undefined;
+    const ageNum = Number(form.age) || undefined;
+
+    // BMI calculation — only if both height and weight are valid
+    const bmi = w && h ? w / (h / 100) ** 2 : undefined;
+
+    // Ideal weight using BMI 22 target
+    const idealWeight = h ? 22 * (h / 100) ** 2 : undefined;
+
+    // Daily calories based on BMI category
+    let dailyCalories: bigint | undefined = undefined;
+    if (bmi !== undefined) {
+      let cals: number;
+      if (bmi < 18.5)
+        cals = 2200; // Underweight — higher calories
+      else if (bmi < 25)
+        cals = 2000; // Normal
+      else if (bmi < 30)
+        cals = 1800; // Overweight
+      else cals = 1500; // Obese
+      dailyCalories = BigInt(cals);
+    }
+
     const profile: UserProfile = {
-      name: form.name,
-      email: form.email,
-      age: BigInt(Math.round(Number.parseFloat(form.age) || 0)),
+      name: form.name.trim(),
+      mobileNumber: form.mobileNumber.trim(),
+      email: form.email.trim() || undefined,
+      address: form.address.trim() || undefined,
+      age: ageNum !== undefined ? BigInt(Math.round(ageNum)) : undefined,
       weight: w,
       height: h,
-      bmi: bmi ?? 0,
-      // New fields - cast to any to satisfy old backend.ts type until regenerated
-      ...({
-        phone: form.phone,
-        address: form.address,
-        gender: form.gender,
-        calorieTarget: BigInt(
-          Math.round(Number.parseFloat(form.calorieTarget) || 0),
-        ),
-        dietaryPreferences: parseCsv(form.dietaryPreferences),
-        dietaryRestrictions: parseCsv(form.dietaryRestrictions),
-      } as any),
-    } as UserProfile;
+      bmi,
+      idealWeight,
+      dailyCalories,
+      gender: form.gender || undefined,
+      dietaryPreferences: form.dietaryPreferences.trim() || undefined,
+      dietaryRestrictions: form.dietaryRestrictions.trim() || undefined,
+    };
 
     try {
       await saveProfile.mutateAsync(profile);
-      toast.success("Profile saved successfully! 🌿");
-    } catch {
-      toast.error("Failed to save profile. Please try again.");
+      toast.success("Profile updated successfully");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("name")) toast.error("Please enter your name");
+      else if (msg.includes("mobile") || msg.includes("phone"))
+        toast.error("Invalid mobile number");
+      else if (msg.includes("Unauthorized")) toast.error("Please log in again");
+      else
+        toast.error(
+          "Failed to save profile. Please check your details and try again.",
+        );
     }
   };
 
@@ -347,6 +423,11 @@ export default function ProfilePage() {
         <div className="space-y-6">
           {/* BMI Card */}
           {liveBMI && <BMICard bmi={liveBMI} />}
+
+          {/* Daily Calories Card — shown after profile is saved */}
+          {existingProfile?.dailyCalories && (
+            <CaloriesCard dailyCalories={existingProfile.dailyCalories} />
+          )}
 
           {/* Order History */}
           <Card className="border-border shadow-sm">
@@ -482,14 +563,13 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   {[
                     "name",
-                    "phone",
+                    "mobile",
                     "email",
                     "address",
                     "age",
                     "weight",
                     "height",
                     "gender",
-                    "calories",
                     "prefs",
                     "restrictions",
                   ].map((field) => (
@@ -508,39 +588,40 @@ export default function ProfilePage() {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <User className="h-3.5 w-3.5 text-primary" />
-                      Full Name
+                      Full Name{" "}
+                      <span className="text-destructive text-xs">*</span>
                     </Label>
                     <Input
                       id="name"
                       name="name"
                       value={form.name}
                       onChange={handleChange}
-                      placeholder="Ahmad Ali Khan"
-                      required
+                      placeholder="Rahul Sharma"
                       className="border-border"
                       data-ocid="profile.name_input"
                     />
                   </div>
 
-                  {/* Phone & Email */}
+                  {/* Mobile & Email */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label
-                        htmlFor="phone"
+                        htmlFor="mobileNumber"
                         className="flex items-center gap-2 text-sm font-medium"
                       >
                         <Phone className="h-3.5 w-3.5 text-primary" />
-                        Phone
+                        Mobile Number{" "}
+                        <span className="text-destructive text-xs">*</span>
                       </Label>
                       <Input
-                        id="phone"
-                        name="phone"
+                        id="mobileNumber"
+                        name="mobileNumber"
                         type="tel"
-                        value={form.phone}
+                        value={form.mobileNumber}
                         onChange={handleChange}
-                        placeholder="+92 300 1234567"
+                        placeholder="+91 98765 43210"
                         className="border-border"
-                        data-ocid="profile.phone_input"
+                        data-ocid="profile.mobile_number_input"
                       />
                     </div>
                     <div className="space-y-2">
@@ -557,7 +638,7 @@ export default function ProfilePage() {
                         type="email"
                         value={form.email}
                         onChange={handleChange}
-                        placeholder="ahmad@example.com"
+                        placeholder="rahul@example.com"
                         className="border-border"
                         data-ocid="profile.email_input"
                       />
@@ -578,7 +659,7 @@ export default function ProfilePage() {
                       name="address"
                       value={form.address}
                       onChange={handleChange}
-                      placeholder="House 12, Street 4, Gulberg, Lahore"
+                      placeholder="House 12, Street 4, Green Park, New Delhi"
                       className="border-border"
                       data-ocid="profile.address_input"
                     />
@@ -603,7 +684,6 @@ export default function ProfilePage() {
                         value={form.age}
                         onChange={handleChange}
                         placeholder="28"
-                        required
                         className="border-border"
                         data-ocid="profile.age_input"
                       />
@@ -661,7 +741,6 @@ export default function ProfilePage() {
                         value={form.weight}
                         onChange={handleChange}
                         placeholder="65"
-                        required
                         className="border-border"
                         data-ocid="profile.weight_input"
                       />
@@ -683,34 +762,10 @@ export default function ProfilePage() {
                         value={form.height}
                         onChange={handleChange}
                         placeholder="170"
-                        required
                         className="border-border"
                         data-ocid="profile.height_input"
                       />
                     </div>
-                  </div>
-
-                  {/* Calorie Target */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="calorieTarget"
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <Flame className="h-3.5 w-3.5 text-primary" />
-                      Daily Calorie Target (kcal)
-                    </Label>
-                    <Input
-                      id="calorieTarget"
-                      name="calorieTarget"
-                      type="number"
-                      min="500"
-                      max="10000"
-                      value={form.calorieTarget}
-                      onChange={handleChange}
-                      placeholder="2000"
-                      className="border-border"
-                      data-ocid="profile.calorie_target_input"
-                    />
                   </div>
 
                   {/* Dietary Preferences */}
