@@ -394,10 +394,10 @@ export default function OrdersPage() {
                             )?.toString()}
                           </span>
                           <span className="text-muted-foreground">
-                            PKR{" "}
+                            ₹
                             {(
                               item.unitPrice * Number(item.quantity)
-                            ).toLocaleString()}
+                            ).toLocaleString("en-IN")}
                           </span>
                         </div>
                       ))}
@@ -420,7 +420,7 @@ export default function OrdersPage() {
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Total</p>
                       <p className="font-display font-bold text-xl text-primary">
-                        PKR {order.totalAmount.toLocaleString()}
+                        ₹{order.totalAmount.toLocaleString("en-IN")}
                       </p>
                     </div>
                   </div>

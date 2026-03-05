@@ -252,7 +252,7 @@ export default function AdminCoupons() {
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-foreground">
                       {coupon.discountType === CouponDiscountType.fixed
-                        ? `PKR ${coupon.discountValue}`
+                        ? `₹${coupon.discountValue}`
                         : `${coupon.discountValue}%`}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -357,7 +357,7 @@ export default function AdminCoupons() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={CouponDiscountType.fixed}>
-                    Fixed Amount (PKR)
+                    Fixed Amount (₹)
                   </SelectItem>
                   <SelectItem value={CouponDiscountType.percentage}>
                     Percentage (%)
@@ -369,7 +369,7 @@ export default function AdminCoupons() {
               <div className="space-y-2">
                 <Label htmlFor="discountValue" className="text-sm font-medium">
                   {form.discountType === CouponDiscountType.fixed
-                    ? "Discount Amount (PKR)"
+                    ? "Discount Amount (₹)"
                     : "Discount (%)"}
                 </Label>
                 <Input

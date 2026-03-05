@@ -223,7 +223,7 @@ export default function AdminInventory() {
                   Unit
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                  Price/Unit (Rs.)
+                  Price/Unit (₹)
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
                   Low Stock At
@@ -265,7 +265,7 @@ export default function AdminInventory() {
                       {item.unit}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      PKR {Number(costUnit).toLocaleString("en-PK")}
+                      ₹{Number(costUnit).toLocaleString("en-IN")}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {reorderLvl.toString()}
@@ -379,7 +379,7 @@ export default function AdminInventory() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="costPerUnit" className="text-sm font-medium">
-                  Cost/Unit (PKR)
+                  Cost/Unit (₹)
                 </Label>
                 <Input
                   id="costPerUnit"

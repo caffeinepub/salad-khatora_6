@@ -1,14 +1,22 @@
+import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AdminUserRecord,
   Coupon,
   DashboardStats,
   DeliveryRider,
   IngredientItem,
+  MenuItem,
   Order,
   OrderDelivery,
   Subscription,
+  UserProfile,
 } from "../backend";
-import type { OrderStatus } from "../backend";
+import type {
+  OrderStatus,
+  SubscriptionPlan,
+  SubscriptionStatus,
+} from "../backend";
 import { useActor } from "./useActor";
 
 // ─── Admin: Dashboard ─────────────────────────────────────────────────────────
@@ -70,6 +78,130 @@ export function useAllSubscriptions() {
       return actor.getAllSubscriptions();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAdminCreateSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      userId: Principal;
+      plan: SubscriptionPlan;
+      totalSalads: bigint;
+      remainingSalads: bigint;
+      startDate: bigint;
+      endDate: bigint;
+      status: SubscriptionStatus;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.adminCreateSubscription(
+        args.userId,
+        args.plan,
+        args.totalSalads,
+        args.remainingSalads,
+        args.startDate,
+        args.endDate,
+        args.status,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
+  });
+}
+
+export function useAdminUpdateSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      plan: SubscriptionPlan;
+      totalSalads: bigint;
+      remainingSalads: bigint;
+      startDate: bigint;
+      endDate: bigint;
+      status: SubscriptionStatus;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminUpdateSubscription(
+        args.id,
+        args.plan,
+        args.totalSalads,
+        args.remainingSalads,
+        args.startDate,
+        args.endDate,
+        args.status,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
+  });
+}
+
+export function useAdminPauseSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminPauseSubscription(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
+  });
+}
+
+export function useAdminExtendSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      newEndDate: bigint;
+      additionalSalads: bigint;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminExtendSubscription(
+        args.id,
+        args.newEndDate,
+        args.additionalSalads,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
+  });
+}
+
+export function useAdminCancelSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminCancelSubscription(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
+  });
+}
+
+export function useAdminDeleteSubscription() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminDeleteSubscription(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
+    },
   });
 }
 
@@ -292,6 +424,144 @@ export function useUpdateDeliveryStatus() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allOrderDeliveries"] });
+    },
+  });
+}
+
+// ─── Admin: Users (Customers) ─────────────────────────────────────────────────
+
+export function useAllUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AdminUserRecord[]>({
+    queryKey: ["allUsers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.adminGetAllUsers();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAdminCreateUser() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      user,
+      profile,
+    }: {
+      user: Principal;
+      profile: UserProfile;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminCreateUser(user, profile);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
+    },
+  });
+}
+
+export function useAdminUpdateUser() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      user,
+      profile,
+    }: {
+      user: Principal;
+      profile: UserProfile;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminUpdateUser(user, profile);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
+    },
+  });
+}
+
+export function useAdminDeleteUser() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (user: Principal) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.adminDeleteUser(user);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
+    },
+  });
+}
+
+// ─── Admin: Menu Items ────────────────────────────────────────────────────────
+
+export function useAllMenuItems() {
+  const { actor, isFetching } = useActor();
+  return useQuery<MenuItem[]>({
+    queryKey: ["allMenuItems"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllMenuItems();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddMenuItem() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: MenuItem) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.addMenuItem(item);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
+    },
+  });
+}
+
+export function useUpdateMenuItem() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: MenuItem) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.updateMenuItem(item);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
+    },
+  });
+}
+
+export function useDeleteMenuItem() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.deleteMenuItem(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
+    },
+  });
+}
+
+export function useToggleAvailability() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.toggleAvailability(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
     },
   });
 }

@@ -7,6 +7,10 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface AdminUserRecord {
+    principal: Principal;
+    profile: UserProfile;
+}
 export interface Coupon {
     id: bigint;
     active: boolean;
@@ -40,8 +44,11 @@ export interface Order {
 export interface Subscription {
     id: bigint;
     status: SubscriptionStatus;
+    endDate: bigint;
     userId: Principal;
     plan: SubscriptionPlan;
+    remainingSalads: bigint;
+    totalSalads: bigint;
     startDate: bigint;
 }
 export interface MenuItem {
@@ -50,8 +57,10 @@ export interface MenuItem {
     name: string;
     description: string;
     available: boolean;
+    imageUrl?: string;
     category: string;
     price: number;
+    protein: bigint;
 }
 export interface OrderDelivery {
     assignedAt?: bigint;
@@ -77,8 +86,14 @@ export interface UserProfile {
     bmi: number;
     weight: number;
     height: number;
+    calorieTarget?: bigint;
+    dietaryPreferences?: string;
     name: string;
     email: string;
+    dietaryRestrictions?: string;
+    address?: string;
+    gender?: string;
+    phone?: string;
 }
 export enum CouponDiscountType {
     fixed = "fixed",
@@ -98,7 +113,8 @@ export enum SubscriptionPlan {
 }
 export enum SubscriptionStatus {
     active = "active",
-    cancelled = "cancelled"
+    cancelled = "cancelled",
+    paused = "paused"
 }
 export enum UserRole {
     admin = "admin",
@@ -110,6 +126,16 @@ export interface backendInterface {
     addDeliveryRider(rider: DeliveryRider): Promise<void>;
     addIngredient(item: IngredientItem): Promise<void>;
     addMenuItem(item: MenuItem): Promise<void>;
+    adminCancelSubscription(id: bigint): Promise<void>;
+    adminCreateSubscription(userId: Principal, plan: SubscriptionPlan, totalSalads: bigint, remainingSalads: bigint, startDate: bigint, endDate: bigint, status: SubscriptionStatus): Promise<bigint>;
+    adminCreateUser(user: Principal, profile: UserProfile): Promise<void>;
+    adminDeleteSubscription(id: bigint): Promise<void>;
+    adminDeleteUser(user: Principal): Promise<void>;
+    adminExtendSubscription(id: bigint, newEndDate: bigint, additionalSalads: bigint): Promise<void>;
+    adminGetAllUsers(): Promise<Array<AdminUserRecord>>;
+    adminPauseSubscription(id: bigint): Promise<void>;
+    adminUpdateSubscription(id: bigint, plan: SubscriptionPlan, totalSalads: bigint, remainingSalads: bigint, startDate: bigint, endDate: bigint, status: SubscriptionStatus): Promise<void>;
+    adminUpdateUser(user: Principal, profile: UserProfile): Promise<void>;
     applyCoupon(code: string): Promise<number>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignRiderToOrder(orderId: bigint, riderId: bigint): Promise<void>;
@@ -117,6 +143,7 @@ export interface backendInterface {
     createOrUpdateProfile(profile: UserProfile): Promise<void>;
     deleteCoupon(id: bigint): Promise<void>;
     deleteIngredient(id: bigint): Promise<void>;
+    deleteMenuItem(id: bigint): Promise<void>;
     getActiveCoupons(): Promise<Array<Coupon>>;
     getAllCoupons(): Promise<Array<Coupon>>;
     getAllDeliveryRiders(): Promise<Array<DeliveryRider>>;

@@ -13,6 +13,7 @@ import {
   Tag,
   Truck,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -34,6 +35,12 @@ const ADMIN_LINKS = [
   },
   { to: "/admin/coupons", label: "Coupons", icon: Tag, exact: false },
   { to: "/admin/delivery", label: "Delivery", icon: Truck, exact: false },
+  {
+    to: "/admin/menu",
+    label: "Menu Management",
+    icon: UtensilsCrossed,
+    exact: false,
+  },
 ];
 
 export default function AdminLayout() {

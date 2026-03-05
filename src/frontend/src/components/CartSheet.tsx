@@ -107,7 +107,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           {item.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          PKR {item.unitPrice.toLocaleString()} each
+                          ₹{item.unitPrice.toLocaleString("en-IN")} each
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -135,8 +135,10 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                       </div>
                       <div className="w-20 text-right">
                         <p className="text-sm font-semibold text-primary">
-                          PKR{" "}
-                          {(item.unitPrice * item.quantity).toLocaleString()}
+                          ₹
+                          {(item.unitPrice * item.quantity).toLocaleString(
+                            "en-IN",
+                          )}
                         </p>
                       </div>
                       <button
@@ -157,7 +159,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground text-sm">Subtotal</span>
                 <span className="font-display font-bold text-lg text-primary">
-                  PKR {total.toLocaleString()}
+                  ₹{total.toLocaleString("en-IN")}
                 </span>
               </div>
 
@@ -200,7 +202,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
               ) : (
                 <>
                   <ShoppingBag className="h-4 w-4" />
-                  Place Order · PKR {total.toLocaleString()}
+                  Place Order · ₹{total.toLocaleString("en-IN")}
                 </>
               )}
             </Button>

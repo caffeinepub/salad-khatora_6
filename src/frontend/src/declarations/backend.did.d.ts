@@ -10,6 +10,10 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminUserRecord {
+  'principal' : Principal,
+  'profile' : UserProfile,
+}
 export interface Coupon {
   'id' : bigint,
   'active' : boolean,
@@ -48,8 +52,10 @@ export interface MenuItem {
   'name' : string,
   'description' : string,
   'available' : boolean,
+  'imageUrl' : [] | [string],
   'category' : string,
   'price' : number,
+  'protein' : bigint,
 }
 export interface Order {
   'id' : bigint,
@@ -79,21 +85,31 @@ export type OrderStatus = { 'preparing' : null } |
 export interface Subscription {
   'id' : bigint,
   'status' : SubscriptionStatus,
+  'endDate' : bigint,
   'userId' : Principal,
   'plan' : SubscriptionPlan,
+  'remainingSalads' : bigint,
+  'totalSalads' : bigint,
   'startDate' : bigint,
 }
 export type SubscriptionPlan = { 'monthly' : null } |
   { 'weekly' : null };
 export type SubscriptionStatus = { 'active' : null } |
-  { 'cancelled' : null };
+  { 'cancelled' : null } |
+  { 'paused' : null };
 export interface UserProfile {
   'age' : bigint,
   'bmi' : number,
   'weight' : number,
   'height' : number,
+  'calorieTarget' : [] | [bigint],
+  'dietaryPreferences' : [] | [string],
   'name' : string,
   'email' : string,
+  'dietaryRestrictions' : [] | [string],
+  'address' : [] | [string],
+  'gender' : [] | [string],
+  'phone' : [] | [string],
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -104,6 +120,38 @@ export interface _SERVICE {
   'addDeliveryRider' : ActorMethod<[DeliveryRider], undefined>,
   'addIngredient' : ActorMethod<[IngredientItem], undefined>,
   'addMenuItem' : ActorMethod<[MenuItem], undefined>,
+  'adminCancelSubscription' : ActorMethod<[bigint], undefined>,
+  'adminCreateSubscription' : ActorMethod<
+    [
+      Principal,
+      SubscriptionPlan,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      SubscriptionStatus,
+    ],
+    bigint
+  >,
+  'adminCreateUser' : ActorMethod<[Principal, UserProfile], undefined>,
+  'adminDeleteSubscription' : ActorMethod<[bigint], undefined>,
+  'adminDeleteUser' : ActorMethod<[Principal], undefined>,
+  'adminExtendSubscription' : ActorMethod<[bigint, bigint, bigint], undefined>,
+  'adminGetAllUsers' : ActorMethod<[], Array<AdminUserRecord>>,
+  'adminPauseSubscription' : ActorMethod<[bigint], undefined>,
+  'adminUpdateSubscription' : ActorMethod<
+    [
+      bigint,
+      SubscriptionPlan,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      SubscriptionStatus,
+    ],
+    undefined
+  >,
+  'adminUpdateUser' : ActorMethod<[Principal, UserProfile], undefined>,
   'applyCoupon' : ActorMethod<[string], number>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignRiderToOrder' : ActorMethod<[bigint, bigint], undefined>,
@@ -111,6 +159,7 @@ export interface _SERVICE {
   'createOrUpdateProfile' : ActorMethod<[UserProfile], undefined>,
   'deleteCoupon' : ActorMethod<[bigint], undefined>,
   'deleteIngredient' : ActorMethod<[bigint], undefined>,
+  'deleteMenuItem' : ActorMethod<[bigint], undefined>,
   'getActiveCoupons' : ActorMethod<[], Array<Coupon>>,
   'getAllCoupons' : ActorMethod<[], Array<Coupon>>,
   'getAllDeliveryRiders' : ActorMethod<[], Array<DeliveryRider>>,

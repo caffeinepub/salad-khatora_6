@@ -227,7 +227,7 @@ function MenuItemCard({
 
         <div className="flex items-center justify-between gap-3">
           <span className="font-display font-bold text-2xl text-primary">
-            PKR {item.price.toLocaleString()}
+            ₹{item.price.toLocaleString("en-IN")}
           </span>
           <Button
             size="sm"
@@ -288,8 +288,14 @@ export default function MenuPage() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
-  const displayItems =
+  // Only show active/available items to customers
+  const allItems =
     menuItems && menuItems.length > 0 ? menuItems : FALLBACK_ITEMS;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const displayItems = allItems.filter((item) => {
+    const anyItem = item as any;
+    return anyItem.available !== false && anyItem.isActive !== false;
+  });
 
   const categories = useMemo(() => {
     const cats = new Set<string>(["All"]);

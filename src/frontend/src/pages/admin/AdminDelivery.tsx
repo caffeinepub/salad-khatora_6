@@ -118,7 +118,7 @@ export default function AdminDelivery() {
 
   function getOrderAmount(orderId: bigint): string {
     const order = orders?.find((o) => o.id === orderId);
-    return order ? `PKR ${order.totalAmount.toLocaleString()}` : "—";
+    return order ? `₹${order.totalAmount.toLocaleString("en-IN")}` : "—";
   }
 
   const isPending = addRider.isPending || updateRider.isPending;

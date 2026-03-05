@@ -232,7 +232,7 @@ export default function AdminOrders() {
                       {itemCount} item{itemCount !== 1 ? "s" : ""}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-foreground">
-                      PKR {order.totalAmount.toLocaleString()}
+                      ₹{order.totalAmount.toLocaleString("en-IN")}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(order.createdAt)}

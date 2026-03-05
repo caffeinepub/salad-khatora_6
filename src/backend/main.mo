@@ -1,16 +1,17 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
-import Iter "mo:core/Iter";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
-import MixinAuthorization "authorization/MixinAuthorization";
+
 import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
 
 
+// Use migration on upgrade
 
 actor {
   /////////////////////
@@ -26,7 +27,7 @@ actor {
   // TYPES           //
   /////////////////////
 
-  // User Profile
+  // User Profile (Extended)
   public type UserProfile = {
     name : Text;
     email : Text;
@@ -34,9 +35,21 @@ actor {
     weight : Float; // in kg
     height : Float; // in cm
     bmi : Float;
+    phone : ?Text;
+    address : ?Text;
+    gender : ?Text;
+    dietaryPreferences : ?Text;
+    dietaryRestrictions : ?Text;
+    calorieTarget : ?Nat;
   };
 
-  // Menu Item
+  // Admin User Record Type (NEW)
+  public type AdminUserRecord = {
+    principal : Principal;
+    profile : UserProfile;
+  };
+
+  // Menu Item (UPDATED)
   public type MenuItem = {
     id : Nat;
     name : Text;
@@ -45,6 +58,8 @@ actor {
     category : Text;
     calories : Nat;
     available : Bool;
+    protein : Nat;
+    imageUrl : ?Text;
   };
 
   // Order Item
@@ -81,18 +96,22 @@ actor {
     #monthly; // 24 salads
   };
 
-  // Subscription Status
+  // Subscription Status - EXTENDED
   public type SubscriptionStatus = {
     #active;
+    #paused;
     #cancelled;
   };
 
-  // Subscription
+  // Subscription - EXTENDED
   public type Subscription = {
     id : Nat;
     userId : Principal;
     plan : SubscriptionPlan;
+    totalSalads : Nat;
+    remainingSalads : Nat;
     startDate : Int;
+    endDate : Int;
     status : SubscriptionStatus;
   };
 
@@ -166,6 +185,8 @@ actor {
   let deliveryRiders = Map.empty<Nat, DeliveryRider>();
   let orderDeliveries = Map.empty<Nat, OrderDelivery>();
 
+  var nextSubscriptionId = 1;
+
   /////////////////////
   // USER PROFILES   //
   /////////////////////
@@ -192,6 +213,64 @@ actor {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
+  };
+
+  ////////////////////////////
+  // PHASE 4: ADMIN USER    //
+  //        MANAGEMENT      //
+  ////////////////////////////
+
+  // Admin only: Get all user profiles
+  public query ({ caller }) func adminGetAllUsers() : async [AdminUserRecord] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all user profiles");
+    };
+
+    let allUsers = userProfiles.toArray();
+    allUsers.map(
+      func(entry) {
+        let (principal, profile) = entry;
+        { principal; profile };
+      }
+    );
+  };
+
+  // Admin only: Create user profile for any principal
+  public shared ({ caller }) func adminCreateUser(user : Principal, profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create user profiles for others");
+    };
+    userProfiles.add(user, profile);
+  };
+
+  // Admin only: Update user profile for any principal
+  public shared ({ caller }) func adminUpdateUser(user : Principal, profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can update user profiles for others");
+    };
+    switch (userProfiles.get(user)) {
+      case (null) {
+        Runtime.trap("User profile does not exist. Use adminCreateUser instead.");
+      };
+      case (?_) {
+        userProfiles.add(user, profile);
+      };
+    };
+  };
+
+  // Admin only: Delete user profile for any principal
+  public shared ({ caller }) func adminDeleteUser(user : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete user profiles");
+    };
+    switch (userProfiles.get(user)) {
+      case (null) {
+        Runtime.trap("User profile does not exist");
+      };
+      case (?_) {
+        userProfiles.remove(user);
+      };
+    };
   };
 
   // Legacy function - kept for backward compatibility
@@ -252,6 +331,19 @@ actor {
       Runtime.trap("Unauthorized: Only admins can update menu items");
     };
     menuItems.add(item.id, item);
+  };
+
+  // Admin only - delete menu item (NEW)
+  public shared ({ caller }) func deleteMenuItem(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete menu items");
+    };
+    switch (menuItems.get(id)) {
+      case (null) { Runtime.trap("Menu item not found") };
+      case (?_) {
+        menuItems.remove(id);
+      };
+    };
   };
 
   // Admin only
@@ -345,6 +437,12 @@ actor {
   // SUBSCRIPTIONS          //
   ////////////////////////////
 
+  let WEEKLY_SALADS = 6;
+  let MONTHLY_SALADS = 24;
+
+  let WEEK_DURATION_NANOS : Int = 7 * 24 * 60 * 60 * 1_000_000_000;
+  let MONTH_DURATION_NANOS : Int = 30 * 24 * 60 * 60 * 1_000_000_000;
+
   // User only - subscribe to a plan
   public shared ({ caller }) func subscribeToPlan(plan : SubscriptionPlan) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -364,12 +462,23 @@ actor {
       case (null) {};
     };
 
-    let subId = subscriptions.size() + 1;
+    let subId = nextSubscriptionId;
+    nextSubscriptionId += 1;
+    let now = Time.now();
+
+    let (totalSalads, endDate) = switch (plan) {
+      case (#weekly) { (WEEKLY_SALADS, now + WEEK_DURATION_NANOS) };
+      case (#monthly) { (MONTHLY_SALADS, now + MONTH_DURATION_NANOS) };
+    };
+
     let newSub : Subscription = {
       id = subId;
       userId = caller;
       plan;
-      startDate = Time.now();
+      totalSalads;
+      remainingSalads = totalSalads;
+      startDate = now;
+      endDate;
       status = #active;
     };
 
@@ -418,10 +527,140 @@ actor {
 
   // Admin only - get all subscriptions
   public query ({ caller }) func getAllSubscriptions() : async [Subscription] {
-    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view subscriptions");
     };
     subscriptions.values().toArray();
+  };
+
+  // Admin only - create subscription with all fields
+  public shared ({ caller }) func adminCreateSubscription(
+    userId : Principal,
+    plan : SubscriptionPlan,
+    totalSalads : Nat,
+    remainingSalads : Nat,
+    startDate : Int,
+    endDate : Int,
+    status : SubscriptionStatus
+  ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create subscriptions");
+    };
+
+    let subId = nextSubscriptionId;
+    nextSubscriptionId += 1;
+
+    let newSub : Subscription = {
+      id = subId;
+      userId;
+      plan;
+      totalSalads;
+      remainingSalads;
+      startDate;
+      endDate;
+      status;
+    };
+
+    subscriptions.add(subId, newSub);
+    subId;
+  };
+
+  // Admin only - update subscription fields by id
+  public shared ({ caller }) func adminUpdateSubscription(
+    id : Nat,
+    plan : SubscriptionPlan,
+    totalSalads : Nat,
+    remainingSalads : Nat,
+    startDate : Int,
+    endDate : Int,
+    status : SubscriptionStatus
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can update subscriptions");
+    };
+
+    switch (subscriptions.get(id)) {
+      case (null) { Runtime.trap("Subscription not found") };
+      case (?sub) {
+        let updatedSub : Subscription = {
+          sub with
+          plan;
+          totalSalads;
+          remainingSalads;
+          startDate;
+          endDate;
+          status;
+        };
+        subscriptions.add(id, updatedSub);
+      };
+    };
+  };
+
+  // Admin only - pause subscription
+  public shared ({ caller }) func adminPauseSubscription(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can pause subscriptions");
+    };
+
+    switch (subscriptions.get(id)) {
+      case (null) { Runtime.trap("Subscription not found") };
+      case (?sub) {
+        let updated = { sub with status = #paused : SubscriptionStatus };
+        subscriptions.add(id, updated);
+      };
+    };
+  };
+
+  // Admin only - extend subscription (update end date and add salads)
+  public shared ({ caller }) func adminExtendSubscription(
+    id : Nat,
+    newEndDate : Int,
+    additionalSalads : Nat
+  ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can extend subscriptions");
+    };
+
+    switch (subscriptions.get(id)) {
+      case (null) { Runtime.trap("Subscription not found") };
+      case (?sub) {
+        let updatedSub : Subscription = {
+          sub with
+          endDate = newEndDate;
+          remainingSalads = sub.remainingSalads + additionalSalads;
+        };
+        subscriptions.add(id, updatedSub);
+      };
+    };
+  };
+
+  // Admin only - cancel subscription
+  public shared ({ caller }) func adminCancelSubscription(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can cancel subscriptions");
+    };
+
+    switch (subscriptions.get(id)) {
+      case (null) { Runtime.trap("Subscription not found") };
+      case (?sub) {
+        let updated = { sub with status = #cancelled : SubscriptionStatus };
+        subscriptions.add(id, updated);
+      };
+    };
+  };
+
+  // Admin only - delete (remove) subscription from state
+  public shared ({ caller }) func adminDeleteSubscription(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete subscriptions");
+    };
+
+    switch (subscriptions.get(id)) {
+      case (null) { Runtime.trap("Subscription not found") };
+      case (?_) {
+        subscriptions.remove(id);
+      };
+    };
   };
 
   ////////////////////////////

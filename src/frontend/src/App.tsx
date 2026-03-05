@@ -14,6 +14,7 @@ import AdminCustomers from "@/pages/admin/AdminCustomers";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDelivery from "@/pages/admin/AdminDelivery";
 import AdminInventory from "@/pages/admin/AdminInventory";
+import AdminMenu from "@/pages/admin/AdminMenu";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
 import {
@@ -124,6 +125,12 @@ const adminDeliveryRoute = createRoute({
   component: AdminDelivery,
 });
 
+const adminMenuRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/menu",
+  component: AdminMenu,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   menuRoute,
@@ -139,6 +146,7 @@ const routeTree = rootRoute.addChildren([
     adminInventoryRoute,
     adminCouponsRoute,
     adminDeliveryRoute,
+    adminMenuRoute,
   ]),
 ]);
 

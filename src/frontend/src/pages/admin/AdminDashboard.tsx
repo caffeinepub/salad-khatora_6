@@ -43,7 +43,7 @@ const STAT_CONFIG = [
     icon: TrendingUp,
     color: "bg-emerald-50 text-emerald-600",
     valueColor: "text-emerald-700",
-    format: (v: bigint | number) => `PKR ${Number(v).toLocaleString("en-PK")}`,
+    format: (v: bigint | number) => `₹${Number(v).toLocaleString("en-IN")}`,
   },
   {
     key: "activeSubscriptions",
@@ -161,11 +161,11 @@ export default function AdminDashboard() {
                 Revenue per Customer
               </p>
               <p className="font-bold text-foreground">
-                PKR{" "}
+                ₹
                 {stats.totalCustomers > 0
                   ? Math.round(
                       stats.totalRevenue / Number(stats.totalCustomers),
-                    ).toLocaleString("en-PK")
+                    ).toLocaleString("en-IN")
                   : "0"}
               </p>
             </div>
