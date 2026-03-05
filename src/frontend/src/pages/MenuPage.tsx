@@ -157,9 +157,12 @@ function MenuItemCard({
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyItem = item as any;
-  const itemImage: string = anyItem.image ?? "";
-  const itemProtein: number = anyItem.protein ?? 0;
-  const itemIsActive: boolean = anyItem.isActive ?? anyItem.available ?? true;
+  const itemImage: string = anyItem.imageUrl ?? anyItem.image ?? "";
+  const itemProtein: number = Number(anyItem.protein ?? 0);
+  const itemCalories: number = Number(anyItem.calories ?? 0);
+  const itemPrice: number = Number(anyItem.price ?? 0);
+  const itemIsActive: boolean =
+    anyItem.isActive !== false && anyItem.available !== false;
 
   const imgSrc =
     itemImage && itemImage.length > 0
@@ -211,7 +214,7 @@ function MenuItemCard({
         <div className="flex items-center gap-2 flex-wrap mb-4">
           <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
             <Flame className="h-3 w-3 text-orange-500" />
-            {item.calories.toString()} kcal
+            {itemCalories.toString()} kcal
           </div>
           {itemProtein > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
@@ -227,7 +230,7 @@ function MenuItemCard({
 
         <div className="flex items-center justify-between gap-3">
           <span className="font-display font-bold text-2xl text-primary">
-            ₹{item.price.toLocaleString("en-IN")}
+            ₹{itemPrice.toLocaleString("en-IN")}
           </span>
           <Button
             size="sm"
@@ -283,7 +286,7 @@ function MenuSkeleton() {
 }
 
 export default function MenuPage() {
-  const { data: menuItems, isLoading } = useAllMenuItems();
+  const { data: menuItems, isLoading, isError } = useAllMenuItems();
   const { addItem, items: cartItems } = useCart();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -318,13 +321,36 @@ export default function MenuPage() {
   const cartItemIds = new Set(cartItems.map((i) => i.menuItemId.toString()));
 
   const handleAdd = (item: MenuItem) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyItem = item as any;
     addItem({
       menuItemId: item.id,
       name: item.name,
-      unitPrice: item.price,
+      unitPrice: Number(anyItem.price ?? 0),
     });
-    toast.success(`${item.name} added to cart 🥗`);
+    toast.success(`${item.name} added to cart`);
   };
+
+  if (isError) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div
+          className="max-w-md w-full text-center bg-white rounded-2xl border border-border p-10 shadow-sm"
+          data-ocid="menu.error_state"
+        >
+          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
+            <Search className="h-7 w-7 text-destructive" />
+          </div>
+          <h2 className="font-display text-xl font-bold text-foreground mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Unable to load the menu. Please refresh the page.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background">

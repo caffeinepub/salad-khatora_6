@@ -2,6 +2,7 @@ import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AdminUserRecord,
+  AppSettings,
   Coupon,
   DashboardStats,
   DeliveryRider,
@@ -614,6 +615,34 @@ export function useSetSaladIngredients() {
         queryKey: ["saladIngredients", variables.saladId.toString()],
       });
       void queryClient.invalidateQueries({ queryKey: ["allSaladIngredients"] });
+    },
+  });
+}
+
+// ─── Admin: App Settings ──────────────────────────────────────────────────────
+
+export function useAppSettings() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AppSettings>({
+    queryKey: ["appSettings"],
+    queryFn: async () => {
+      if (!actor) throw new Error("No actor");
+      return actor.getAppSettings();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSaveAppSettings() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (settings: AppSettings) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.saveAppSettings(settings);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["appSettings"] });
     },
   });
 }

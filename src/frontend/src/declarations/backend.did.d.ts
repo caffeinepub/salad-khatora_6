@@ -14,6 +14,15 @@ export interface AdminUserRecord {
   'principal' : Principal,
   'profile' : UserProfile,
 }
+export interface AppSettings {
+  'deliveryCharge' : number,
+  'taxEnabled' : boolean,
+  'businessName' : string,
+  'whatsappNumber' : string,
+  'freeDeliveryAbove' : number,
+  'servicePincodes' : Array<string>,
+  'taxPercentage' : number,
+}
 export interface Coupon {
   'id' : bigint,
   'active' : boolean,
@@ -177,6 +186,7 @@ export interface _SERVICE {
     Array<{ 'saladId' : bigint, 'ingredients' : Array<SaladIngredient> }>
   >,
   'getAllSubscriptions' : ActorMethod<[], Array<Subscription>>,
+  'getAppSettings' : ActorMethod<[], AppSettings>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
@@ -191,6 +201,7 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'placeOrder' : ActorMethod<[Array<OrderItem>, number, [] | [string]], bigint>,
+  'saveAppSettings' : ActorMethod<[AppSettings], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setSaladIngredients' : ActorMethod<
     [bigint, Array<SaladIngredient>],

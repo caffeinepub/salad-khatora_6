@@ -8,6 +8,7 @@ import {
   Leaf,
   Loader2,
   Package,
+  Settings2,
   ShieldAlert,
   ShoppingCart,
   Tag,
@@ -39,6 +40,12 @@ const ADMIN_LINKS = [
     to: "/admin/menu",
     label: "Menu Management",
     icon: UtensilsCrossed,
+    exact: false,
+  },
+  {
+    to: "/admin/settings",
+    label: "Settings",
+    icon: Settings2,
     exact: false,
   },
 ];

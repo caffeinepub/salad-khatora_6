@@ -35,14 +35,16 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
       login();
       return;
     }
-    if (items.length === 0) return;
+    if (items.length === 0) {
+      toast.error("Cart is empty. Add items before placing an order.");
+      return;
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orderItems = items.map((item) => ({
-      saladId: item.menuItemId,
+      menuItemId: item.menuItemId,
       quantity: BigInt(item.quantity),
-      unitPrice: item.unitPrice,
-    })) as any;
+      unitPrice: Number(item.unitPrice) || 0,
+    }));
 
     try {
       await placeOrder.mutateAsync({
@@ -53,9 +55,21 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
       clearCart();
       setNotes("");
       onOpenChange(false);
-      toast.success("Order placed successfully! 🥗");
-    } catch {
-      toast.error("Failed to place order. Please try again.");
+      toast.success("Order placed successfully!");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("Cart is empty")) {
+        toast.error("Cart is empty. Add items before placing an order.");
+      } else if (message.includes("Insufficient stock")) {
+        toast.error("Some items are out of stock. Please update your cart.");
+      } else if (message.includes("Unauthorized")) {
+        toast.error("Please log in to place an order.");
+      } else if (message.includes("Not connected")) {
+        toast.error("Connection lost. Please refresh the page and try again.");
+      } else {
+        toast.error("Failed to place order. Please try again.");
+        console.error("Order placement error:", message);
+      }
     }
   };
 

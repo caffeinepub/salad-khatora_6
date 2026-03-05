@@ -37,6 +37,12 @@ export default function Navigation() {
       authOnly: true,
     },
     {
+      to: "/profile",
+      label: "Profile",
+      ocid: "nav.profile_link",
+      authOnly: true,
+    },
+    {
       to: "/subscriptions",
       label: "Subscriptions",
       ocid: "nav.subscriptions_link",

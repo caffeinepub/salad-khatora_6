@@ -108,7 +108,7 @@ export default function SubscriptionsPage() {
   const { identity, login, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { data: subscription, isLoading } = useMySubscription();
+  const { data: subscription, isLoading, isError } = useMySubscription();
   const subscribeMutation = useSubscribeToPlan();
   const cancelMutation = useCancelSubscription();
 
@@ -296,7 +296,24 @@ export default function SubscriptionsPage() {
         </AnimatePresence>
 
         {/* Plans */}
-        {isLoading ? (
+        {isError ? (
+          <div
+            className="flex flex-col items-center justify-center py-20 gap-4 text-center"
+            data-ocid="subscriptions.error_state"
+          >
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <Salad className="h-8 w-8 text-destructive/50" />
+            </div>
+            <div>
+              <p className="font-semibold text-white mb-1">
+                Something went wrong
+              </p>
+              <p className="text-white/70 text-sm">
+                Unable to load subscription plans. Please refresh the page.
+              </p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <SubscriptionSkeleton />
         ) : (
           <motion.div

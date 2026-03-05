@@ -121,6 +121,15 @@ export const Subscription = IDL.Record({
   'totalSalads' : IDL.Nat,
   'startDate' : IDL.Int,
 });
+export const AppSettings = IDL.Record({
+  'deliveryCharge' : IDL.Float64,
+  'taxEnabled' : IDL.Bool,
+  'businessName' : IDL.Text,
+  'whatsappNumber' : IDL.Text,
+  'freeDeliveryAbove' : IDL.Float64,
+  'servicePincodes' : IDL.Vec(IDL.Text),
+  'taxPercentage' : IDL.Float64,
+});
 export const DashboardStats = IDL.Record({
   'totalRevenue' : IDL.Float64,
   'totalCustomers' : IDL.Nat,
@@ -196,6 +205,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
+  'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -226,6 +236,7 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'saveAppSettings' : IDL.Func([AppSettings], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setSaladIngredients' : IDL.Func([IDL.Nat, IDL.Vec(SaladIngredient)], [], []),
   'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
@@ -353,6 +364,15 @@ export const idlFactory = ({ IDL }) => {
     'totalSalads' : IDL.Nat,
     'startDate' : IDL.Int,
   });
+  const AppSettings = IDL.Record({
+    'deliveryCharge' : IDL.Float64,
+    'taxEnabled' : IDL.Bool,
+    'businessName' : IDL.Text,
+    'whatsappNumber' : IDL.Text,
+    'freeDeliveryAbove' : IDL.Float64,
+    'servicePincodes' : IDL.Vec(IDL.Text),
+    'taxPercentage' : IDL.Float64,
+  });
   const DashboardStats = IDL.Record({
     'totalRevenue' : IDL.Float64,
     'totalCustomers' : IDL.Nat,
@@ -428,6 +448,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
+    'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -462,6 +483,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'saveAppSettings' : IDL.Func([AppSettings], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setSaladIngredients' : IDL.Func(
         [IDL.Nat, IDL.Vec(SaladIngredient)],

@@ -213,7 +213,7 @@ export default function OrdersPage() {
   const { identity, login, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { data: orders, isLoading, refetch } = useMyOrders();
+  const { data: orders, isLoading, isError, refetch } = useMyOrders();
 
   // Real-time polling every 5 seconds
   const refetchRef = useRef(refetch);
@@ -301,7 +301,24 @@ export default function OrdersPage() {
           </p>
         </motion.div>
 
-        {isLoading ? (
+        {isError ? (
+          <div
+            className="flex flex-col items-center justify-center py-20 gap-4 text-center"
+            data-ocid="orders.error_state"
+          >
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <ShoppingBag className="h-8 w-8 text-destructive/50" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground mb-1">
+                Something went wrong
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Unable to load your orders. Please refresh the page.
+              </p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div data-ocid="orders.loading_state">
             <OrderSkeleton />
           </div>

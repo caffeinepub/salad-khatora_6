@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/backend";
+import { OrderStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +21,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useMyProfile, useSaveProfile } from "@/hooks/useQueries";
+import { useMyOrders, useMyProfile, useSaveProfile } from "@/hooks/useQueries";
+import { Link } from "@tanstack/react-router";
 import {
   Activity,
+  ArrowRight,
   Calendar,
+  Clock,
   Flame,
   Leaf,
   Loader2,
@@ -32,6 +36,7 @@ import {
   MapPin,
   Phone,
   Ruler,
+  ShoppingBag,
   TrendingUp,
   User,
   Weight,
@@ -39,6 +44,34 @@ import {
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
+const ORDER_STATUS_BADGE: Record<string, { label: string; className: string }> =
+  {
+    [OrderStatus.pending]: {
+      label: "Pending",
+      className: "bg-amber-50 border-amber-200 text-amber-700",
+    },
+    [OrderStatus.confirmed]: {
+      label: "Confirmed",
+      className: "bg-blue-50 border-blue-200 text-blue-700",
+    },
+    [OrderStatus.preparing]: {
+      label: "Preparing",
+      className: "bg-orange-50 border-orange-200 text-orange-700",
+    },
+    [OrderStatus.outForDelivery]: {
+      label: "Out for Delivery",
+      className: "bg-violet-50 border-violet-200 text-violet-700",
+    },
+    [OrderStatus.delivered]: {
+      label: "Delivered",
+      className: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    },
+    [OrderStatus.cancelled]: {
+      label: "Cancelled",
+      className: "bg-red-50 border-red-200 text-red-700",
+    },
+  };
 
 interface BMIInfo {
   value: number;
@@ -151,6 +184,7 @@ export default function ProfilePage() {
   const isAuthenticated = !!identity;
   const { data: existingProfile, isLoading: profileLoading } = useMyProfile();
   const saveProfile = useSaveProfile();
+  const { data: orders, isLoading: ordersLoading } = useMyOrders();
 
   const [form, setForm] = useState({
     name: "",
@@ -306,13 +340,130 @@ export default function ProfilePage() {
             Your Profile
           </h1>
           <p className="text-muted-foreground">
-            Set up your health metrics to personalize your experience
+            Manage your profile, delivery address, and view your order history
           </p>
         </motion.div>
 
         <div className="space-y-6">
           {/* BMI Card */}
           {liveBMI && <BMICard bmi={liveBMI} />}
+
+          {/* Order History */}
+          <Card className="border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="font-display text-xl flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-primary" />
+                Order History
+              </CardTitle>
+              <CardDescription>Your most recent orders</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ordersLoading ? (
+                <div
+                  className="space-y-3"
+                  data-ocid="profile.orders.loading_state"
+                >
+                  {[1, 2].map((n) => (
+                    <div
+                      key={n}
+                      className="flex items-center justify-between p-4 rounded-xl border border-border"
+                    >
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                      <Skeleton className="h-6 w-20 rounded-full ml-4" />
+                    </div>
+                  ))}
+                </div>
+              ) : !orders || orders.length === 0 ? (
+                <div
+                  className="flex flex-col items-center justify-center py-10 gap-3 text-center"
+                  data-ocid="profile.orders.empty_state"
+                >
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      No orders placed yet
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Browse the menu and place your first order!
+                    </p>
+                  </div>
+                  <Button asChild size="sm" variant="outline" className="gap-2">
+                    <Link to="/menu">
+                      <Leaf className="h-4 w-4" />
+                      Browse Menu
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3" data-ocid="profile.orders.list">
+                  {orders.slice(0, 5).map((order, i) => {
+                    const statusMeta =
+                      ORDER_STATUS_BADGE[order.status as string] ??
+                      ORDER_STATUS_BADGE[OrderStatus.pending];
+                    const itemCount = order.items.reduce(
+                      (s, item) => s + Number(item.quantity),
+                      0,
+                    );
+                    const orderDate = new Date(
+                      Number(order.createdAt / BigInt(1_000_000)),
+                    ).toLocaleDateString("en-IN");
+
+                    return (
+                      <div
+                        key={order.id.toString()}
+                        className="flex items-center justify-between p-4 rounded-xl border border-border hover:bg-muted/30 transition-colors"
+                        data-ocid={`profile.orders.item.${i + 1}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Clock className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">
+                              Order #{order.id.toString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {orderDate} · {itemCount} item
+                              {itemCount !== 1 ? "s" : ""} ·{" "}
+                              <span className="font-medium text-foreground">
+                                ₹
+                                {Number(order.totalAmount || 0).toLocaleString(
+                                  "en-IN",
+                                )}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          className={`${statusMeta.className} border text-xs font-medium flex-shrink-0 ml-3`}
+                        >
+                          {statusMeta.label}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-2">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full gap-2"
+                      data-ocid="profile.orders.primary_button"
+                    >
+                      <Link to="/orders">
+                        View All Orders
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Form */}
           <Card className="border-border shadow-sm">

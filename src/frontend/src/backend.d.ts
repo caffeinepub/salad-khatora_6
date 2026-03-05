@@ -41,6 +41,15 @@ export interface Order {
     notes?: string;
     items: Array<OrderItem>;
 }
+export interface AppSettings {
+    deliveryCharge: number;
+    taxEnabled: boolean;
+    businessName: string;
+    whatsappNumber: string;
+    freeDeliveryAbove: number;
+    servicePincodes: Array<string>;
+    taxPercentage: number;
+}
 export interface Subscription {
     id: bigint;
     status: SubscriptionStatus;
@@ -161,6 +170,7 @@ export interface backendInterface {
         ingredients: Array<SaladIngredient>;
     }>>;
     getAllSubscriptions(): Promise<Array<Subscription>>;
+    getAppSettings(): Promise<AppSettings>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
@@ -175,6 +185,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     placeOrder(items: Array<OrderItem>, totalAmount: number, notes: string | null): Promise<bigint>;
+    saveAppSettings(settings: AppSettings): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setSaladIngredients(saladId: bigint, ingredientList: Array<SaladIngredient>): Promise<void>;
     subscribeToPlan(plan: SubscriptionPlan): Promise<bigint>;

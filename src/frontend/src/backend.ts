@@ -123,6 +123,15 @@ export interface Order {
     notes?: string;
     items: Array<OrderItem>;
 }
+export interface AppSettings {
+    deliveryCharge: number;
+    taxEnabled: boolean;
+    businessName: string;
+    whatsappNumber: string;
+    freeDeliveryAbove: number;
+    servicePincodes: Array<string>;
+    taxPercentage: number;
+}
 export interface Subscription {
     id: bigint;
     status: SubscriptionStatus;
@@ -244,6 +253,7 @@ export interface backendInterface {
         ingredients: Array<SaladIngredient>;
     }>>;
     getAllSubscriptions(): Promise<Array<Subscription>>;
+    getAppSettings(): Promise<AppSettings>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
@@ -258,6 +268,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     placeOrder(items: Array<OrderItem>, totalAmount: number, notes: string | null): Promise<bigint>;
+    saveAppSettings(settings: AppSettings): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setSaladIngredients(saladId: bigint, ingredientList: Array<SaladIngredient>): Promise<void>;
     subscribeToPlan(plan: SubscriptionPlan): Promise<bigint>;
@@ -722,6 +733,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getAppSettings(): Promise<AppSettings> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAppSettings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAppSettings();
+            return result;
+        }
+    }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -915,6 +940,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.placeOrder(arg0, arg1, to_candid_opt_n53(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+    async saveAppSettings(arg0: AppSettings): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveAppSettings(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveAppSettings(arg0);
             return result;
         }
     }

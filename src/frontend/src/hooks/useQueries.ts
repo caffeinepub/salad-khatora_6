@@ -91,14 +91,9 @@ export function usePlaceOrder() {
       notes: string | null;
     }) => {
       if (!actor) throw new Error("Not connected");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any).placeOrder(
-        items,
-        totalAmount,
-        "instant",
-        null,
-        notes,
-      );
+      if (!items || items.length === 0) throw new Error("Cart is empty");
+      if (totalAmount <= 0) throw new Error("Invalid order total");
+      return actor.placeOrder(items, totalAmount, notes);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["myOrders"] });
