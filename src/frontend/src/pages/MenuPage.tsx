@@ -26,6 +26,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Seasonal: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const FALLBACK_ITEMS: MenuItem[] = [
   {
     id: BigInt(1),
@@ -35,6 +36,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Vegetarian",
     price: 450,
     calories: BigInt(285),
+    protein: 8,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -45,6 +49,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Classic",
     price: 550,
     calories: BigInt(320),
+    protein: 12,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -55,6 +62,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Protein",
     price: 750,
     calories: BigInt(420),
+    protein: 35,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -65,6 +75,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Seasonal",
     price: 620,
     calories: BigInt(310),
+    protein: 6,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -75,6 +88,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Classic",
     price: 580,
     calories: BigInt(390),
+    protein: 15,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -85,6 +101,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Grain Bowl",
     price: 680,
     calories: BigInt(440),
+    protein: 18,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -95,6 +114,9 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Protein",
     price: 890,
     calories: BigInt(360),
+    protein: 28,
+    image: "",
+    isActive: true,
     available: true,
   },
   {
@@ -105,9 +127,13 @@ const FALLBACK_ITEMS: MenuItem[] = [
     category: "Vegetarian",
     price: 480,
     calories: BigInt(195),
+    protein: 5,
+    image: "",
+    isActive: true,
     available: true,
   },
-];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+] as any;
 
 const CATEGORY_IMAGES: Record<string, string> = {
   Vegetarian: "/assets/generated/salad-garden.dim_600x400.jpg",
@@ -129,9 +155,17 @@ function MenuItemCard({
   onAdd: (item: MenuItem) => void;
   isAdded: boolean;
 }) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyItem = item as any;
+  const itemImage: string = anyItem.image ?? "";
+  const itemProtein: number = anyItem.protein ?? 0;
+  const itemIsActive: boolean = anyItem.isActive ?? anyItem.available ?? true;
+
   const imgSrc =
-    CATEGORY_IMAGES[item.category] ??
-    "/assets/generated/salad-garden.dim_600x400.jpg";
+    itemImage && itemImage.length > 0
+      ? itemImage
+      : (CATEGORY_IMAGES[item.category] ??
+        "/assets/generated/salad-garden.dim_600x400.jpg");
   const categoryClass =
     CATEGORY_COLORS[item.category] ??
     "bg-gray-100 text-gray-700 border-gray-200";
@@ -157,7 +191,7 @@ function MenuItemCard({
         >
           {item.category}
         </span>
-        {!item.available && (
+        {!itemIsActive && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <Badge variant="secondary" className="text-sm">
               Currently Unavailable
@@ -174,11 +208,17 @@ function MenuItemCard({
           {item.description}
         </p>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 flex-wrap mb-4">
           <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
             <Flame className="h-3 w-3 text-orange-500" />
             {item.calories.toString()} kcal
           </div>
+          {itemProtein > 0 && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+              <Leaf className="h-3 w-3 text-blue-500" />
+              {itemProtein.toFixed(0)}g protein
+            </div>
+          )}
           <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
             <Leaf className="h-3 w-3 text-primary" />
             Fresh daily
@@ -192,7 +232,7 @@ function MenuItemCard({
           <Button
             size="sm"
             onClick={() => onAdd(item)}
-            disabled={!item.available || isAdded}
+            disabled={!itemIsActive || isAdded}
             className={`gap-2 transition-all duration-300 ${
               isAdded
                 ? "bg-emerald-500 hover:bg-emerald-600 text-white"

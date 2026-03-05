@@ -91,7 +91,14 @@ export function usePlaceOrder() {
       notes: string | null;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.placeOrder(items, totalAmount, notes);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).placeOrder(
+        items,
+        totalAmount,
+        "instant",
+        null,
+        notes,
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["myOrders"] });

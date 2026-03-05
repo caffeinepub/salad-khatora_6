@@ -243,6 +243,22 @@ export default function SubscriptionsPage() {
                         <span className="capitalize">{subscription.plan}</span>{" "}
                         Plan
                       </p>
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(subscription as any).remainingSalads !== undefined && (
+                        <p className="text-xs text-green-700/70 mt-0.5">
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                          {(subscription as any).remainingSalads.toString()}{" "}
+                          salads remaining out of{" "}
+                          {(subscription as any).totalSalads.toString()}
+                        </p>
+                      )}
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {(subscription as any).endDate !== undefined && (
+                        <p className="text-xs text-green-700/70 mt-0.5">
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                          Expires {formatDate((subscription as any).endDate)}
+                        </p>
+                      )}
                       <p className="text-xs text-green-700/70 mt-0.5">
                         Started {formatDate(subscription.startDate)}
                       </p>

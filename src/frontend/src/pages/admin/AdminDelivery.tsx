@@ -116,11 +116,6 @@ export default function AdminDelivery() {
     }
   }
 
-  function getRiderName(riderId: bigint | undefined): string {
-    if (riderId === undefined) return "—";
-    return riders?.find((r) => r.id === riderId)?.name ?? "Unknown";
-  }
-
   function getOrderAmount(orderId: bigint): string {
     const order = orders?.find((o) => o.id === orderId);
     return order ? `PKR ${order.totalAmount.toLocaleString()}` : "—";
@@ -269,34 +264,61 @@ export default function AdminDelivery() {
                     Order Amount
                   </TableHead>
                   <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                    Assigned Rider
+                    Delivery Partner
                   </TableHead>
                   <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                    Assigned At
+                    Status
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Delivery Time
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deliveries.map((delivery, i) => (
-                  <TableRow
-                    key={delivery.orderId.toString()}
-                    className="hover:bg-muted/20 transition-colors"
-                    data-ocid={`admin.delivery.assignments.row.${i + 1}`}
-                  >
-                    <TableCell className="font-mono text-xs font-semibold text-foreground">
-                      #{delivery.orderId.toString()}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {getOrderAmount(delivery.orderId)}
-                    </TableCell>
-                    <TableCell className="text-sm font-medium text-foreground">
-                      {getRiderName(delivery.riderId)}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDate(delivery.assignedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {deliveries.map((delivery, i) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const anyDelivery = delivery as any;
+                  const partner: string = anyDelivery.deliveryPartner ?? "";
+                  const status: string =
+                    anyDelivery.deliveryStatus ?? "pending";
+                  const deliveryTime: bigint | undefined =
+                    anyDelivery.deliveryTime;
+                  return (
+                    <TableRow
+                      key={delivery.orderId.toString()}
+                      className="hover:bg-muted/20 transition-colors"
+                      data-ocid={`admin.delivery.assignments.row.${i + 1}`}
+                    >
+                      <TableCell className="font-mono text-xs font-semibold text-foreground">
+                        #{delivery.orderId.toString()}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {getOrderAmount(delivery.orderId)}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {partner || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
+                            status === "delivered"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              : status === "outForDelivery"
+                                ? "bg-violet-50 border-violet-200 text-violet-700"
+                                : status === "assigned"
+                                  ? "bg-blue-50 border-blue-200 text-blue-700"
+                                  : "bg-amber-50 border-amber-200 text-amber-700"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatDate(deliveryTime)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

@@ -260,6 +260,42 @@ export function useAssignRiderToOrder() {
   });
 }
 
+export function useAssignDeliveryPartner() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      deliveryPartner,
+    }: { orderId: bigint; deliveryPartner: string }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).assignDeliveryPartner(orderId, deliveryPartner);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allOrderDeliveries"] });
+    },
+  });
+}
+
+export function useUpdateDeliveryStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      status,
+    }: { orderId: bigint; status: string }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).updateDeliveryStatus(orderId, status, null);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["allOrderDeliveries"] });
+    },
+  });
+}
+
 // ─── Admin: Auth Check ────────────────────────────────────────────────────────
 
 export function useIsCallerAdmin() {

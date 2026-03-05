@@ -38,18 +38,18 @@ import { toast } from "sonner";
 
 type IngredientForm = {
   name: string;
-  quantity: string;
+  stockQuantity: string;
   unit: string;
-  pricePerUnit: string;
-  lowStockThreshold: string;
+  costPerUnit: string;
+  reorderLevel: string;
 };
 
 const EMPTY_FORM: IngredientForm = {
   name: "",
-  quantity: "",
+  stockQuantity: "",
   unit: "",
-  pricePerUnit: "",
-  lowStockThreshold: "",
+  costPerUnit: "",
+  reorderLevel: "",
 };
 
 export default function AdminInventory() {
@@ -72,12 +72,26 @@ export default function AdminInventory() {
   }
 
   function openEdit(item: IngredientItem) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyItem = item as any;
     setForm({
       name: item.name,
-      quantity: item.quantity.toString(),
+      stockQuantity: (
+        anyItem.stockQuantity ??
+        anyItem.quantity ??
+        BigInt(0)
+      ).toString(),
       unit: item.unit,
-      pricePerUnit: item.pricePerUnit.toString(),
-      lowStockThreshold: item.lowStockThreshold.toString(),
+      costPerUnit: (
+        anyItem.costPerUnit ??
+        anyItem.pricePerUnit ??
+        0
+      ).toString(),
+      reorderLevel: (
+        anyItem.reorderLevel ??
+        anyItem.lowStockThreshold ??
+        BigInt(0)
+      ).toString(),
     });
     setModal({ open: true, mode: "edit", item });
   }
@@ -89,17 +103,23 @@ export default function AdminInventory() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ingredientData: IngredientItem = {
       id:
         modal.mode === "edit" && modal.item
           ? modal.item.id
           : BigInt(Date.now()),
       name: form.name.trim(),
-      quantity: BigInt(Math.round(Number(form.quantity))),
+      stockQuantity: BigInt(Math.round(Number(form.stockQuantity))),
       unit: form.unit.trim(),
-      pricePerUnit: Number(form.pricePerUnit),
-      lowStockThreshold: BigInt(Math.round(Number(form.lowStockThreshold))),
-    };
+      costPerUnit: Number(form.costPerUnit),
+      reorderLevel: BigInt(Math.round(Number(form.reorderLevel))),
+      // Legacy fields for backward compat with old backend.ts
+      quantity: BigInt(Math.round(Number(form.stockQuantity))),
+      pricePerUnit: Number(form.costPerUnit),
+      lowStockThreshold: BigInt(Math.round(Number(form.reorderLevel))),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as IngredientItem;
 
     if (modal.mode === "add") {
       addIngredient.mutate(ingredientData, {
@@ -129,7 +149,14 @@ export default function AdminInventory() {
 
   const isPending = addIngredient.isPending || updateIngredient.isPending;
   const lowStockCount =
-    ingredients?.filter((i) => i.quantity <= i.lowStockThreshold).length ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ingredients?.filter((i) => {
+      const anyI = i as any;
+      const qty = anyI.stockQuantity ?? anyI.quantity ?? BigInt(0);
+      const threshold =
+        anyI.reorderLevel ?? anyI.lowStockThreshold ?? BigInt(0);
+      return qty <= threshold;
+    }).length ?? 0;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -211,7 +238,17 @@ export default function AdminInventory() {
             </TableHeader>
             <TableBody>
               {ingredients.map((item, i) => {
-                const isLowStock = item.quantity <= item.lowStockThreshold;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const anyItem = item as any;
+                const stockQty =
+                  anyItem.stockQuantity ?? anyItem.quantity ?? BigInt(0);
+                const reorderLvl =
+                  anyItem.reorderLevel ??
+                  anyItem.lowStockThreshold ??
+                  BigInt(0);
+                const costUnit =
+                  anyItem.costPerUnit ?? anyItem.pricePerUnit ?? 0;
+                const isLowStock = stockQty <= reorderLvl;
                 return (
                   <TableRow
                     key={item.id.toString()}
@@ -222,16 +259,16 @@ export default function AdminInventory() {
                       {item.name}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      {item.quantity.toString()}
+                      {stockQty.toString()}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {item.unit}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      PKR {item.pricePerUnit.toLocaleString("en-PK")}
+                      PKR {Number(costUnit).toLocaleString("en-PK")}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {item.lowStockThreshold.toString()}
+                      {reorderLvl.toString()}
                     </TableCell>
                     <TableCell>
                       {isLowStock ? (
@@ -309,15 +346,15 @@ export default function AdminInventory() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="quantity" className="text-sm font-medium">
+                <Label htmlFor="stockQuantity" className="text-sm font-medium">
                   Quantity
                 </Label>
                 <Input
-                  id="quantity"
-                  name="quantity"
+                  id="stockQuantity"
+                  name="stockQuantity"
                   type="number"
                   min="0"
-                  value={form.quantity}
+                  value={form.stockQuantity}
                   onChange={handleFormChange}
                   placeholder="0"
                   required
@@ -341,16 +378,16 @@ export default function AdminInventory() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="pricePerUnit" className="text-sm font-medium">
-                  Price/Unit (PKR)
+                <Label htmlFor="costPerUnit" className="text-sm font-medium">
+                  Cost/Unit (PKR)
                 </Label>
                 <Input
-                  id="pricePerUnit"
-                  name="pricePerUnit"
+                  id="costPerUnit"
+                  name="costPerUnit"
                   type="number"
                   min="0"
                   step="0.01"
-                  value={form.pricePerUnit}
+                  value={form.costPerUnit}
                   onChange={handleFormChange}
                   placeholder="0.00"
                   required
@@ -358,18 +395,15 @@ export default function AdminInventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="lowStockThreshold"
-                  className="text-sm font-medium"
-                >
-                  Low Stock Threshold
+                <Label htmlFor="reorderLevel" className="text-sm font-medium">
+                  Reorder Level
                 </Label>
                 <Input
-                  id="lowStockThreshold"
-                  name="lowStockThreshold"
+                  id="reorderLevel"
+                  name="reorderLevel"
                   type="number"
                   min="0"
-                  value={form.lowStockThreshold}
+                  value={form.reorderLevel}
                   onChange={handleFormChange}
                   placeholder="10"
                   required

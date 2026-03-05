@@ -82,9 +82,17 @@ export default function AdminOrders() {
 
   function getAssignedRiderName(orderId: bigint): string | null {
     const delivery = deliveries?.find((d) => d.orderId === orderId);
-    if (!delivery?.riderId) return null;
-    const rider = riders?.find((r) => r.id === delivery.riderId);
-    return rider?.name ?? null;
+    if (!delivery) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyDelivery = delivery as any;
+    const partner = anyDelivery.deliveryPartner;
+    if (partner) return partner;
+    // Fall back to rider lookup for old schema
+    if (anyDelivery.riderId) {
+      const rider = riders?.find((r) => r.id === anyDelivery.riderId);
+      return rider?.name ?? null;
+    }
+    return null;
   }
 
   function handleStatusChange(orderId: bigint, value: string) {

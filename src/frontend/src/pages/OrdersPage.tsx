@@ -382,12 +382,16 @@ export default function OrdersPage() {
                     <div className="space-y-1.5">
                       {order.items.map((item, j) => (
                         <div
-                          key={`${item.menuItemId.toString()}-${j}`}
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          key={`${(item as any).saladId?.toString() ?? (item as any).menuItemId?.toString() ?? j}-${j}`}
                           className="flex justify-between items-center text-sm"
                         >
                           <span className="text-foreground">
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {item.quantity.toString()}x item #
-                            {item.menuItemId.toString()}
+                            {(
+                              (item as any).saladId ?? (item as any).menuItemId
+                            )?.toString()}
                           </span>
                           <span className="text-muted-foreground">
                             PKR{" "}

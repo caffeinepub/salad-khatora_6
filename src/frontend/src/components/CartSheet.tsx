@@ -37,11 +37,12 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
     }
     if (items.length === 0) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orderItems = items.map((item) => ({
-      menuItemId: item.menuItemId,
+      saladId: item.menuItemId,
       quantity: BigInt(item.quantity),
       unitPrice: item.unitPrice,
-    }));
+    })) as any;
 
     try {
       await placeOrder.mutateAsync({

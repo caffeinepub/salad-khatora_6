@@ -10,16 +10,27 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useMyProfile, useSaveProfile } from "@/hooks/useQueries";
 import {
   Activity,
   Calendar,
+  Flame,
   Leaf,
   Loader2,
   LogIn,
   Mail,
+  MapPin,
+  Phone,
   Ruler,
   TrendingUp,
   User,
@@ -143,10 +154,16 @@ export default function ProfilePage() {
 
   const [form, setForm] = useState({
     name: "",
+    phone: "",
     email: "",
+    address: "",
     age: "",
     weight: "",
     height: "",
+    gender: "",
+    calorieTarget: "",
+    dietaryPreferences: "",
+    dietaryRestrictions: "",
   });
 
   const [liveBMI, setLiveBMI] = useState<number | null>(null);
@@ -154,12 +171,20 @@ export default function ProfilePage() {
   // Populate from existing profile
   useEffect(() => {
     if (existingProfile) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const p = existingProfile as any;
       setForm({
-        name: existingProfile.name,
-        email: existingProfile.email,
-        age: existingProfile.age.toString(),
-        weight: existingProfile.weight.toString(),
-        height: existingProfile.height.toString(),
+        name: p.name ?? "",
+        phone: p.phone ?? "",
+        email: p.email ?? "",
+        address: p.address ?? "",
+        age: p.age?.toString() ?? "",
+        weight: p.weight?.toString() ?? "",
+        height: p.height?.toString() ?? "",
+        gender: p.gender ?? "",
+        calorieTarget: p.calorieTarget?.toString() ?? "",
+        dietaryPreferences: (p.dietaryPreferences ?? []).join(", "),
+        dietaryRestrictions: (p.dietaryRestrictions ?? []).join(", "),
       });
     }
   }, [existingProfile]);
@@ -171,7 +196,9 @@ export default function ProfilePage() {
     setLiveBMI(computeBMI(w, h));
   }, [form.weight, form.height]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -181,14 +208,32 @@ export default function ProfilePage() {
     const h = Number.parseFloat(form.height);
     const bmi = computeBMI(w, h);
 
+    const parseCsv = (val: string) =>
+      val
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profile: UserProfile = {
       name: form.name,
       email: form.email,
-      age: BigInt(Math.round(Number.parseFloat(form.age))),
+      age: BigInt(Math.round(Number.parseFloat(form.age) || 0)),
       weight: w,
       height: h,
       bmi: bmi ?? 0,
-    };
+      // New fields - cast to any to satisfy old backend.ts type until regenerated
+      ...({
+        phone: form.phone,
+        address: form.address,
+        gender: form.gender,
+        calorieTarget: BigInt(
+          Math.round(Number.parseFloat(form.calorieTarget) || 0),
+        ),
+        dietaryPreferences: parseCsv(form.dietaryPreferences),
+        dietaryRestrictions: parseCsv(form.dietaryRestrictions),
+      } as any),
+    } as UserProfile;
 
     try {
       await saveProfile.mutateAsync(profile);
@@ -284,7 +329,19 @@ export default function ProfilePage() {
             <CardContent>
               {profileLoading ? (
                 <div className="space-y-4">
-                  {["name", "email", "age", "weight", "height"].map((field) => (
+                  {[
+                    "name",
+                    "phone",
+                    "email",
+                    "address",
+                    "age",
+                    "weight",
+                    "height",
+                    "gender",
+                    "calories",
+                    "prefs",
+                    "restrictions",
+                  ].map((field) => (
                     <div key={field} className="space-y-2">
                       <Skeleton className="h-4 w-24" />
                       <Skeleton className="h-10 w-full" />
@@ -314,50 +371,123 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  {/* Email */}
+                  {/* Phone & Email */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="phone"
+                        className="flex items-center gap-2 text-sm font-medium"
+                      >
+                        <Phone className="h-3.5 w-3.5 text-primary" />
+                        Phone
+                      </Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={form.phone}
+                        onChange={handleChange}
+                        placeholder="+92 300 1234567"
+                        className="border-border"
+                        data-ocid="profile.phone_input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="email"
+                        className="flex items-center gap-2 text-sm font-medium"
+                      >
+                        <Mail className="h-3.5 w-3.5 text-primary" />
+                        Email
+                      </Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="ahmad@example.com"
+                        className="border-border"
+                        data-ocid="profile.email_input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Address */}
                   <div className="space-y-2">
                     <Label
-                      htmlFor="email"
+                      htmlFor="address"
                       className="flex items-center gap-2 text-sm font-medium"
                     >
-                      <Mail className="h-3.5 w-3.5 text-primary" />
-                      Email Address
+                      <MapPin className="h-3.5 w-3.5 text-primary" />
+                      Delivery Address
                     </Label>
                     <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={form.email}
+                      id="address"
+                      name="address"
+                      value={form.address}
                       onChange={handleChange}
-                      placeholder="ahmad@example.com"
-                      required
+                      placeholder="House 12, Street 4, Gulberg, Lahore"
                       className="border-border"
-                      data-ocid="profile.email_input"
+                      data-ocid="profile.address_input"
                     />
                   </div>
 
-                  {/* Age */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="age"
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <Calendar className="h-3.5 w-3.5 text-primary" />
-                      Age (years)
-                    </Label>
-                    <Input
-                      id="age"
-                      name="age"
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={form.age}
-                      onChange={handleChange}
-                      placeholder="28"
-                      required
-                      className="border-border"
-                      data-ocid="profile.age_input"
-                    />
+                  {/* Age & Gender */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="age"
+                        className="flex items-center gap-2 text-sm font-medium"
+                      >
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        Age (years)
+                      </Label>
+                      <Input
+                        id="age"
+                        name="age"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={form.age}
+                        onChange={handleChange}
+                        placeholder="28"
+                        required
+                        className="border-border"
+                        data-ocid="profile.age_input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="gender"
+                        className="flex items-center gap-2 text-sm font-medium"
+                      >
+                        <User className="h-3.5 w-3.5 text-primary" />
+                        Gender
+                      </Label>
+                      <Select
+                        value={form.gender}
+                        onValueChange={(v) =>
+                          setForm((prev) => ({ ...prev, gender: v }))
+                        }
+                      >
+                        <SelectTrigger
+                          id="gender"
+                          className="border-border"
+                          data-ocid="profile.gender_select"
+                        >
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="prefer_not_to_say">
+                            Prefer not to say
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {/* Weight & Height in a grid */}
@@ -407,6 +537,77 @@ export default function ProfilePage() {
                         data-ocid="profile.height_input"
                       />
                     </div>
+                  </div>
+
+                  {/* Calorie Target */}
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="calorieTarget"
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Flame className="h-3.5 w-3.5 text-primary" />
+                      Daily Calorie Target (kcal)
+                    </Label>
+                    <Input
+                      id="calorieTarget"
+                      name="calorieTarget"
+                      type="number"
+                      min="500"
+                      max="10000"
+                      value={form.calorieTarget}
+                      onChange={handleChange}
+                      placeholder="2000"
+                      className="border-border"
+                      data-ocid="profile.calorie_target_input"
+                    />
+                  </div>
+
+                  {/* Dietary Preferences */}
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="dietaryPreferences"
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Leaf className="h-3.5 w-3.5 text-primary" />
+                      Dietary Preferences
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (comma-separated)
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="dietaryPreferences"
+                      name="dietaryPreferences"
+                      value={form.dietaryPreferences}
+                      onChange={handleChange}
+                      placeholder="e.g. vegetarian, low-carb, high-protein"
+                      className="border-border resize-none text-sm"
+                      rows={2}
+                      data-ocid="profile.dietary_preferences_textarea"
+                    />
+                  </div>
+
+                  {/* Dietary Restrictions */}
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="dietaryRestrictions"
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Activity className="h-3.5 w-3.5 text-primary" />
+                      Dietary Restrictions / Allergies
+                      <span className="text-xs text-muted-foreground font-normal">
+                        (comma-separated)
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="dietaryRestrictions"
+                      name="dietaryRestrictions"
+                      value={form.dietaryRestrictions}
+                      onChange={handleChange}
+                      placeholder="e.g. gluten-free, no nuts, dairy-free"
+                      className="border-border resize-none text-sm"
+                      rows={2}
+                      data-ocid="profile.dietary_restrictions_textarea"
+                    />
                   </div>
 
                   {liveBMI && (

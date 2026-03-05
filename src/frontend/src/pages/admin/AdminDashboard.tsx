@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardStats } from "@/hooks/useAdminQueries";
 import {
+  AlertTriangle,
   ArrowUpRight,
   CalendarCheck,
   ShoppingCart,
@@ -12,8 +13,8 @@ import { motion } from "motion/react";
 
 function StatSkeleton() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {[1, 2, 3, 4].map((n) => (
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {[1, 2, 3, 4, 5].map((n) => (
         <div
           key={n}
           className="rounded-xl border border-border bg-white p-5 space-y-3"
@@ -60,6 +61,14 @@ const STAT_CONFIG = [
     valueColor: "text-amber-700",
     format: (v: bigint | number) => v.toString(),
   },
+  {
+    key: "lowStockIngredients",
+    label: "Low Stock Items",
+    icon: AlertTriangle,
+    color: "bg-red-50 text-red-600",
+    valueColor: "text-red-700",
+    format: (v: bigint | number) => v.toString(),
+  },
 ];
 
 export default function AdminDashboard() {
@@ -92,10 +101,11 @@ export default function AdminDashboard() {
           <p>Failed to load dashboard stats. Please try again.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {STAT_CONFIG.map((cfg, i) => {
             const Icon = cfg.icon;
-            const rawVal = stats?.[cfg.key as keyof typeof stats] ?? BigInt(0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rawVal = (stats as any)?.[cfg.key] ?? BigInt(0);
             const displayVal = cfg.format(rawVal);
 
             return (
