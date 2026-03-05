@@ -82,6 +82,11 @@ export type OrderStatus = { 'preparing' : null } |
   { 'outForDelivery' : null } |
   { 'delivered' : null } |
   { 'confirmed' : null };
+export interface SaladIngredient {
+  'quantityRequired' : bigint,
+  'ingredientId' : bigint,
+  'saladId' : bigint,
+}
 export interface Subscription {
   'id' : bigint,
   'status' : SubscriptionStatus,
@@ -167,6 +172,10 @@ export interface _SERVICE {
   'getAllMenuItems' : ActorMethod<[], Array<MenuItem>>,
   'getAllOrderDeliveries' : ActorMethod<[], Array<OrderDelivery>>,
   'getAllOrders' : ActorMethod<[], Array<Order>>,
+  'getAllSaladIngredients' : ActorMethod<
+    [],
+    Array<{ 'saladId' : bigint, 'ingredients' : Array<SaladIngredient> }>
+  >,
   'getAllSubscriptions' : ActorMethod<[], Array<Subscription>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
@@ -178,10 +187,15 @@ export interface _SERVICE {
   'getMySubscription' : ActorMethod<[], [] | [Subscription]>,
   'getOrderById' : ActorMethod<[bigint], [] | [Order]>,
   'getOrderDelivery' : ActorMethod<[bigint], [] | [OrderDelivery]>,
+  'getSaladIngredients' : ActorMethod<[bigint], Array<SaladIngredient>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'placeOrder' : ActorMethod<[Array<OrderItem>, number, [] | [string]], bigint>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setSaladIngredients' : ActorMethod<
+    [bigint, Array<SaladIngredient>],
+    undefined
+  >,
   'subscribeToPlan' : ActorMethod<[SubscriptionPlan], bigint>,
   'toggleAvailability' : ActorMethod<[bigint], undefined>,
   'updateCoupon' : ActorMethod<[Coupon], undefined>,

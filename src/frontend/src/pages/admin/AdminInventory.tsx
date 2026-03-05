@@ -21,7 +21,9 @@ import {
 import {
   useAddIngredient,
   useAllIngredients,
+  useAllMenuItems,
   useDeleteIngredient,
+  useGetAllSaladIngredients,
   useUpdateIngredient,
 } from "@/hooks/useAdminQueries";
 import {
@@ -54,6 +56,8 @@ const EMPTY_FORM: IngredientForm = {
 
 export default function AdminInventory() {
   const { data: ingredients, isLoading } = useAllIngredients();
+  const { data: allSaladIngredients } = useGetAllSaladIngredients();
+  const { data: menuItems } = useAllMenuItems();
   const addIngredient = useAddIngredient();
   const updateIngredient = useUpdateIngredient();
   const deleteIngredient = useDeleteIngredient();
@@ -147,6 +151,25 @@ export default function AdminInventory() {
     });
   }
 
+  /**
+   * Returns salad names that use a given ingredient.
+   */
+  function getSaladNamesForIngredient(ingredientId: bigint): string[] {
+    if (!allSaladIngredients || !menuItems) return [];
+    const saladIds = new Set<string>();
+    for (const entry of allSaladIngredients) {
+      const usesIngredient = entry.ingredients.some(
+        (si) => si.ingredientId === ingredientId,
+      );
+      if (usesIngredient) {
+        saladIds.add(entry.saladId.toString());
+      }
+    }
+    return menuItems
+      .filter((m) => saladIds.has(m.id.toString()))
+      .map((m) => m.name);
+  }
+
   const isPending = addIngredient.isPending || updateIngredient.isPending;
   const lowStockCount =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,6 +252,9 @@ export default function AdminInventory() {
                   Low Stock At
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                  Used In
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
                   Status
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
@@ -249,6 +275,8 @@ export default function AdminInventory() {
                 const costUnit =
                   anyItem.costPerUnit ?? anyItem.pricePerUnit ?? 0;
                 const isLowStock = stockQty <= reorderLvl;
+                const usedInSalads = getSaladNamesForIngredient(item.id);
+
                 return (
                   <TableRow
                     key={item.id.toString()}
@@ -269,6 +297,27 @@ export default function AdminInventory() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {reorderLvl.toString()}
+                    </TableCell>
+                    {/* Used In column */}
+                    <TableCell
+                      className="text-sm max-w-[160px]"
+                      data-ocid={`admin.inventory.used_in.${i + 1}`}
+                    >
+                      {usedInSalads.length === 0 ? (
+                        <span className="text-muted-foreground/50">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {usedInSalads.map((name) => (
+                            <Badge
+                              key={name}
+                              variant="secondary"
+                              className="text-[10px] px-1.5 py-0.5 font-medium bg-green-50 text-green-700 border border-green-200"
+                            >
+                              {name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {isLowStock ? (

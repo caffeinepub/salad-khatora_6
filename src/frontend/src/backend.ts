@@ -133,6 +133,11 @@ export interface Subscription {
     totalSalads: bigint;
     startDate: bigint;
 }
+export interface SaladIngredient {
+    quantityRequired: bigint;
+    ingredientId: bigint;
+    saladId: bigint;
+}
 export interface MenuItem {
     id: bigint;
     calories: bigint;
@@ -234,6 +239,10 @@ export interface backendInterface {
     getAllMenuItems(): Promise<Array<MenuItem>>;
     getAllOrderDeliveries(): Promise<Array<OrderDelivery>>;
     getAllOrders(): Promise<Array<Order>>;
+    getAllSaladIngredients(): Promise<Array<{
+        saladId: bigint;
+        ingredients: Array<SaladIngredient>;
+    }>>;
     getAllSubscriptions(): Promise<Array<Subscription>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -245,10 +254,12 @@ export interface backendInterface {
     getMySubscription(): Promise<Subscription | null>;
     getOrderById(orderId: bigint): Promise<Order | null>;
     getOrderDelivery(orderId: bigint): Promise<OrderDelivery | null>;
+    getSaladIngredients(saladId: bigint): Promise<Array<SaladIngredient>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     placeOrder(items: Array<OrderItem>, totalAmount: number, notes: string | null): Promise<bigint>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setSaladIngredients(saladId: bigint, ingredientList: Array<SaladIngredient>): Promise<void>;
     subscribeToPlan(plan: SubscriptionPlan): Promise<bigint>;
     toggleAvailability(id: bigint): Promise<void>;
     updateCoupon(coupon: Coupon): Promise<void>;
@@ -680,6 +691,23 @@ export class Backend implements backendInterface {
             return from_candid_vec_n34(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getAllSaladIngredients(): Promise<Array<{
+        saladId: bigint;
+        ingredients: Array<SaladIngredient>;
+    }>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllSaladIngredients();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllSaladIngredients();
+            return result;
+        }
+    }
     async getAllSubscriptions(): Promise<Array<Subscription>> {
         if (this.processError) {
             try {
@@ -834,6 +862,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n52(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getSaladIngredients(arg0: bigint): Promise<Array<SaladIngredient>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSaladIngredients(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSaladIngredients(arg0);
+            return result;
+        }
+    }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -887,6 +929,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n11(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async setSaladIngredients(arg0: bigint, arg1: Array<SaladIngredient>): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setSaladIngredients(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setSaladIngredients(arg0, arg1);
             return result;
         }
     }

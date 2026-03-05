@@ -106,6 +106,11 @@ export const Order = IDL.Record({
   'notes' : IDL.Opt(IDL.Text),
   'items' : IDL.Vec(OrderItem),
 });
+export const SaladIngredient = IDL.Record({
+  'quantityRequired' : IDL.Nat,
+  'ingredientId' : IDL.Nat,
+  'saladId' : IDL.Nat,
+});
 export const Subscription = IDL.Record({
   'id' : IDL.Nat,
   'status' : SubscriptionStatus,
@@ -178,6 +183,18 @@ export const idlService = IDL.Service({
   'getAllMenuItems' : IDL.Func([], [IDL.Vec(MenuItem)], ['query']),
   'getAllOrderDeliveries' : IDL.Func([], [IDL.Vec(OrderDelivery)], ['query']),
   'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+  'getAllSaladIngredients' : IDL.Func(
+      [],
+      [
+        IDL.Vec(
+          IDL.Record({
+            'saladId' : IDL.Nat,
+            'ingredients' : IDL.Vec(SaladIngredient),
+          })
+        ),
+      ],
+      ['query'],
+    ),
   'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -193,6 +210,11 @@ export const idlService = IDL.Service({
   'getMySubscription' : IDL.Func([], [IDL.Opt(Subscription)], ['query']),
   'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
   'getOrderDelivery' : IDL.Func([IDL.Nat], [IDL.Opt(OrderDelivery)], ['query']),
+  'getSaladIngredients' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(SaladIngredient)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -205,6 +227,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setSaladIngredients' : IDL.Func([IDL.Nat, IDL.Vec(SaladIngredient)], [], []),
   'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
   'toggleAvailability' : IDL.Func([IDL.Nat], [], []),
   'updateCoupon' : IDL.Func([Coupon], [], []),
@@ -315,6 +338,11 @@ export const idlFactory = ({ IDL }) => {
     'notes' : IDL.Opt(IDL.Text),
     'items' : IDL.Vec(OrderItem),
   });
+  const SaladIngredient = IDL.Record({
+    'quantityRequired' : IDL.Nat,
+    'ingredientId' : IDL.Nat,
+    'saladId' : IDL.Nat,
+  });
   const Subscription = IDL.Record({
     'id' : IDL.Nat,
     'status' : SubscriptionStatus,
@@ -387,6 +415,18 @@ export const idlFactory = ({ IDL }) => {
     'getAllMenuItems' : IDL.Func([], [IDL.Vec(MenuItem)], ['query']),
     'getAllOrderDeliveries' : IDL.Func([], [IDL.Vec(OrderDelivery)], ['query']),
     'getAllOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+    'getAllSaladIngredients' : IDL.Func(
+        [],
+        [
+          IDL.Vec(
+            IDL.Record({
+              'saladId' : IDL.Nat,
+              'ingredients' : IDL.Vec(SaladIngredient),
+            })
+          ),
+        ],
+        ['query'],
+      ),
     'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -406,6 +446,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(OrderDelivery)],
         ['query'],
       ),
+    'getSaladIngredients' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(SaladIngredient)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -418,6 +463,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setSaladIngredients' : IDL.Func(
+        [IDL.Nat, IDL.Vec(SaladIngredient)],
+        [],
+        [],
+      ),
     'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
     'toggleAvailability' : IDL.Func([IDL.Nat], [], []),
     'updateCoupon' : IDL.Func([Coupon], [], []),

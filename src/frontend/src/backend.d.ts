@@ -51,6 +51,11 @@ export interface Subscription {
     totalSalads: bigint;
     startDate: bigint;
 }
+export interface SaladIngredient {
+    quantityRequired: bigint;
+    ingredientId: bigint;
+    saladId: bigint;
+}
 export interface MenuItem {
     id: bigint;
     calories: bigint;
@@ -151,6 +156,10 @@ export interface backendInterface {
     getAllMenuItems(): Promise<Array<MenuItem>>;
     getAllOrderDeliveries(): Promise<Array<OrderDelivery>>;
     getAllOrders(): Promise<Array<Order>>;
+    getAllSaladIngredients(): Promise<Array<{
+        saladId: bigint;
+        ingredients: Array<SaladIngredient>;
+    }>>;
     getAllSubscriptions(): Promise<Array<Subscription>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -162,10 +171,12 @@ export interface backendInterface {
     getMySubscription(): Promise<Subscription | null>;
     getOrderById(orderId: bigint): Promise<Order | null>;
     getOrderDelivery(orderId: bigint): Promise<OrderDelivery | null>;
+    getSaladIngredients(saladId: bigint): Promise<Array<SaladIngredient>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     placeOrder(items: Array<OrderItem>, totalAmount: number, notes: string | null): Promise<bigint>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setSaladIngredients(saladId: bigint, ingredientList: Array<SaladIngredient>): Promise<void>;
     subscribeToPlan(plan: SubscriptionPlan): Promise<bigint>;
     toggleAvailability(id: bigint): Promise<void>;
     updateCoupon(coupon: Coupon): Promise<void>;

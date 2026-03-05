@@ -6,12 +6,9 @@ import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
-
+import Iter "mo:core/Iter";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-
-
-// Use migration on upgrade
 
 actor {
   /////////////////////
@@ -168,12 +165,20 @@ actor {
     totalCustomers : Nat;
   };
 
+  // New SaladIngredient type
+  public type SaladIngredient = {
+    saladId : Nat;
+    ingredientId : Nat;
+    quantityRequired : Nat;
+  };
+
   /////////////////////
   // STATE           //
   /////////////////////
 
   // Internal state for initialization
   let accessControlState = AccessControl.initState();
+
   include MixinAuthorization(accessControlState);
 
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -185,7 +190,39 @@ actor {
   let deliveryRiders = Map.empty<Nat, DeliveryRider>();
   let orderDeliveries = Map.empty<Nat, OrderDelivery>();
 
+  // New saladIngredients map (key: saladId, value: [SaladIngredient])
+  let saladIngredients = Map.empty<Nat, [SaladIngredient]>();
+
   var nextSubscriptionId = 1;
+
+  ///////////////////////
+  // SALAD INGREDIENTS //
+  ///////////////////////
+
+  // Admin only: Set all ingredients for a salad
+  public shared ({ caller }) func setSaladIngredients(saladId : Nat, ingredientList : [SaladIngredient]) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can set salad ingredients");
+    };
+    saladIngredients.add(saladId, ingredientList);
+  };
+
+  // Public query: Get ingredients for a specific salad
+  public query ({ caller }) func getSaladIngredients(saladId : Nat) : async [SaladIngredient] {
+    switch (saladIngredients.get(saladId)) {
+      case (null) { [] };
+      case (?ingredients) { ingredients };
+    };
+  };
+
+  // Public query: Get all salad-ingredient mappings
+  public query ({ caller }) func getAllSaladIngredients() : async [{ saladId : Nat; ingredients : [SaladIngredient] }] {
+    saladIngredients.toArray().map(
+      func((saladId, ingredients)) {
+        { saladId; ingredients };
+      }
+    );
+  };
 
   /////////////////////
   // USER PROFILES   //
@@ -378,6 +415,49 @@ actor {
       status = #pending;
       createdAt = Time.now();
       notes;
+    };
+
+    // First pass: Validate all ingredient quantities
+    for (item in items.values()) {
+      switch (saladIngredients.get(item.menuItemId)) {
+        case (null) {};
+        case (?saladIngredientMappings) {
+          for (mapping in saladIngredientMappings.values()) {
+            switch (ingredients.get(mapping.ingredientId)) {
+              case (null) {
+                Runtime.trap("Ingredient not found: " # mapping.ingredientId.toText());
+              };
+              case (?ingredient) {
+                let totalNeeded = mapping.quantityRequired * item.quantity;
+                if (ingredient.quantity < totalNeeded) {
+                  Runtime.trap("Insufficient stock for ingredient: " # ingredient.name);
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+
+    // Second pass: Deduct all ingredient quantities
+    for (item in items.values()) {
+      switch (saladIngredients.get(item.menuItemId)) {
+        case (null) {};
+        case (?saladIngredientMappings) {
+          for (mapping in saladIngredientMappings.values()) {
+            switch (ingredients.get(mapping.ingredientId)) {
+              case (null) { () };
+              case (?ingredient) {
+                let totalNeeded = mapping.quantityRequired * item.quantity;
+                let newIngredient : IngredientItem = {
+                  ingredient with quantity = ingredient.quantity - totalNeeded;
+                };
+                ingredients.add(mapping.ingredientId, newIngredient);
+              };
+            };
+          };
+        };
+      };
     };
 
     orders.add(orderId, order);

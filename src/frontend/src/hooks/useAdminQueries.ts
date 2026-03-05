@@ -9,6 +9,7 @@ import type {
   MenuItem,
   Order,
   OrderDelivery,
+  SaladIngredient,
   Subscription,
   UserProfile,
 } from "../backend";
@@ -562,6 +563,57 @@ export function useToggleAvailability() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
+    },
+  });
+}
+
+// ─── Admin: Salad Ingredients ─────────────────────────────────────────────────
+
+export function useGetSaladIngredients(saladId: bigint | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<SaladIngredient[]>({
+    queryKey: ["saladIngredients", saladId?.toString()],
+    queryFn: async () => {
+      if (!actor || saladId === null) return [];
+      return actor.getSaladIngredients(saladId);
+    },
+    enabled: !!actor && !isFetching && saladId !== null,
+  });
+}
+
+export function useGetAllSaladIngredients() {
+  const { actor, isFetching } = useActor();
+  return useQuery<
+    Array<{ saladId: bigint; ingredients: Array<SaladIngredient> }>
+  >({
+    queryKey: ["allSaladIngredients"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllSaladIngredients();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useSetSaladIngredients() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      saladId,
+      ingredientList,
+    }: {
+      saladId: bigint;
+      ingredientList: Array<SaladIngredient>;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.setSaladIngredients(saladId, ingredientList);
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["saladIngredients", variables.saladId.toString()],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["allSaladIngredients"] });
     },
   });
 }

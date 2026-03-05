@@ -1,4 +1,4 @@
-import type { MenuItem } from "@/backend";
+import type { MenuItem, SaladIngredient } from "@/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -33,8 +41,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAddMenuItem,
+  useAllIngredients,
   useAllMenuItems,
   useDeleteMenuItem,
+  useGetSaladIngredients,
+  useSetSaladIngredients,
   useToggleAvailability,
   useUpdateMenuItem,
 } from "@/hooks/useAdminQueries";
@@ -48,7 +59,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 type MenuForm = {
@@ -60,6 +71,12 @@ type MenuForm = {
   protein: string;
   imageUrl: string;
   available: boolean;
+};
+
+type IngredientRow = {
+  key: string;
+  ingredientId: string;
+  quantity: string;
 };
 
 const EMPTY_FORM: MenuForm = {
@@ -88,25 +105,47 @@ function itemToForm(item: MenuItem): MenuForm {
 
 export default function AdminMenu() {
   const { data: items, isLoading } = useAllMenuItems();
+  const { data: allIngredients } = useAllIngredients();
   const addMenuItem = useAddMenuItem();
   const updateMenuItem = useUpdateMenuItem();
   const deleteMenuItem = useDeleteMenuItem();
   const toggleAvailability = useToggleAvailability();
+  const setSaladIngredients = useSetSaladIngredients();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null);
   const [form, setForm] = useState<MenuForm>(EMPTY_FORM);
+  const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([]);
+
+  // Fetch existing salad ingredients when editing
+  const { data: existingSaladIngredients, isLoading: isLoadingIngredients } =
+    useGetSaladIngredients(editingItem?.id ?? null);
+
+  // Pre-populate ingredientRows when editing and data is available
+  useEffect(() => {
+    if (editingItem && existingSaladIngredients) {
+      setIngredientRows(
+        existingSaladIngredients.map((si) => ({
+          key: `${si.saladId.toString()}-${si.ingredientId.toString()}`,
+          ingredientId: si.ingredientId.toString(),
+          quantity: si.quantityRequired.toString(),
+        })),
+      );
+    }
+  }, [editingItem, existingSaladIngredients]);
 
   function openAdd() {
     setEditingItem(null);
     setForm(EMPTY_FORM);
+    setIngredientRows([]);
     setIsFormOpen(true);
   }
 
   function openEdit(item: MenuItem) {
     setEditingItem(item);
     setForm(itemToForm(item));
+    setIngredientRows([]); // will be populated by useEffect once data loads
     setIsFormOpen(true);
   }
 
@@ -116,7 +155,28 @@ export default function AdminMenu() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function addIngredientRow() {
+    setIngredientRows((prev) => [
+      ...prev,
+      { key: `new-${Date.now()}`, ingredientId: "", quantity: "" },
+    ]);
+  }
+
+  function removeIngredientRow(index: number) {
+    setIngredientRows((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateIngredientRow(
+    index: number,
+    field: keyof IngredientRow,
+    value: string,
+  ) {
+    setIngredientRows((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const menuItem: MenuItem = {
@@ -131,9 +191,30 @@ export default function AdminMenu() {
       available: form.available,
     };
 
+    const validIngredientRows = ingredientRows.filter(
+      (row) => row.ingredientId !== "" && row.quantity !== "",
+    );
+
+    const ingredientList: SaladIngredient[] = validIngredientRows.map(
+      (row) => ({
+        saladId: menuItem.id,
+        ingredientId: BigInt(row.ingredientId),
+        quantityRequired: BigInt(Math.round(Number(row.quantity))),
+      }),
+    );
+
     if (editingItem) {
       updateMenuItem.mutate(menuItem, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Save ingredient mappings
+          try {
+            await setSaladIngredients.mutateAsync({
+              saladId: menuItem.id,
+              ingredientList,
+            });
+          } catch {
+            // ingredient save failure is non-blocking
+          }
           toast.success("Menu item updated");
           setIsFormOpen(false);
         },
@@ -141,7 +222,15 @@ export default function AdminMenu() {
       });
     } else {
       addMenuItem.mutate(menuItem, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          try {
+            await setSaladIngredients.mutateAsync({
+              saladId: menuItem.id,
+              ingredientList,
+            });
+          } catch {
+            // ingredient save failure is non-blocking
+          }
           toast.success("Menu item added");
           setIsFormOpen(false);
         },
@@ -168,7 +257,10 @@ export default function AdminMenu() {
     });
   }
 
-  const isPending = addMenuItem.isPending || updateMenuItem.isPending;
+  const isPending =
+    addMenuItem.isPending ||
+    updateMenuItem.isPending ||
+    setSaladIngredients.isPending;
 
   return (
     <div className="p-6 max-w-7xl mx-auto" data-ocid="admin.menu.page">
@@ -542,6 +634,135 @@ export default function AdminMenu() {
               >
                 Active
               </Label>
+            </div>
+
+            {/* ── Ingredients Section ── */}
+            <Separator />
+            <div
+              className="space-y-3"
+              data-ocid="admin.menu.ingredients.section"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Ingredients
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Link inventory ingredients and specify quantity per serving
+                  </p>
+                </div>
+              </div>
+
+              {/* Loading state when editing and ingredients are still fetching */}
+              {editingItem && isLoadingIngredients ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+              ) : ingredientRows.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-border bg-muted/20 py-5 text-center">
+                  <Leaf className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/40" />
+                  <p className="text-xs text-muted-foreground">
+                    No ingredients linked yet
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {ingredientRows.map((row, i) => {
+                    const selectedIngredient = allIngredients?.find(
+                      (ing) => ing.id.toString() === row.ingredientId,
+                    );
+                    const unitLabel = selectedIngredient?.unit ?? "";
+
+                    return (
+                      <div
+                        key={row.key}
+                        className="flex items-end gap-2 p-2 rounded-lg bg-muted/20 border border-border"
+                      >
+                        {/* Ingredient select */}
+                        <div className="flex-1 space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Ingredient
+                          </Label>
+                          <Select
+                            value={row.ingredientId}
+                            onValueChange={(val) =>
+                              updateIngredientRow(i, "ingredientId", val)
+                            }
+                          >
+                            <SelectTrigger
+                              data-ocid={`admin.menu.ingredient.select.${i + 1}`}
+                              className="h-8 text-xs"
+                            >
+                              <SelectValue placeholder="Select ingredient…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allIngredients && allIngredients.length > 0 ? (
+                                allIngredients.map((ing) => (
+                                  <SelectItem
+                                    key={ing.id.toString()}
+                                    value={ing.id.toString()}
+                                    className="text-xs"
+                                  >
+                                    {ing.name} ({ing.unit})
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="__none__" disabled>
+                                  No ingredients in inventory
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Quantity input */}
+                        <div className="w-28 space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">
+                            Qty{unitLabel ? ` (${unitLabel})` : ""}
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={row.quantity}
+                            onChange={(e) =>
+                              updateIngredientRow(i, "quantity", e.target.value)
+                            }
+                            placeholder="0"
+                            className="h-8 text-xs"
+                            data-ocid={`admin.menu.ingredient.quantity.${i + 1}`}
+                          />
+                        </div>
+
+                        {/* Remove button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 flex-shrink-0"
+                          onClick={() => removeIngredientRow(i)}
+                          title="Remove ingredient"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Add Ingredient row button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 text-xs h-8 border-dashed"
+                onClick={addIngredientRow}
+                data-ocid="admin.menu.ingredient.add_button"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Ingredient
+              </Button>
             </div>
 
             <DialogFooter className="pt-2">
