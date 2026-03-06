@@ -13,6 +13,8 @@ import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
 
+
+
 actor {
   /////////////////////
   // CONSTANTS       //
@@ -152,10 +154,12 @@ actor {
     available : Bool;
   };
 
-  // Order Delivery
+  // NEW Order Delivery
   public type OrderDelivery = {
     orderId : Nat;
     riderId : ?Nat;
+    riderName : ?Text;
+    deliveryStatus : ?Text;
     assignedAt : ?Int;
   };
 
@@ -200,7 +204,6 @@ actor {
   let coupons = Map.empty<Nat, Coupon>();
   let deliveryRiders = Map.empty<Nat, DeliveryRider>();
   let orderDeliveries = Map.empty<Nat, OrderDelivery>();
-
   let saladIngredients = Map.empty<Nat, [SaladIngredient]>();
 
   var nextSubscriptionId = 1;
@@ -880,16 +883,17 @@ actor {
 
     switch (deliveryRiders.get(riderId)) {
       case (null) { Runtime.trap("Rider not found") };
-      case (?_) {};
+      case (?rider) {
+        let delivery : OrderDelivery = {
+          orderId;
+          riderId = ?riderId;
+          riderName = ?rider.name;
+          deliveryStatus = ?"assigned";
+          assignedAt = ?Time.now();
+        };
+        orderDeliveries.add(orderId, delivery);
+      };
     };
-
-    let delivery : OrderDelivery = {
-      orderId;
-      riderId = ?riderId;
-      assignedAt = ?Time.now();
-    };
-
-    orderDeliveries.add(orderId, delivery);
   };
 
   public query ({ caller }) func getOrderDelivery(orderId : Nat) : async ?OrderDelivery {

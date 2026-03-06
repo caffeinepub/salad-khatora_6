@@ -32,9 +32,17 @@ import {
   useAssignRiderToOrder,
   useUpdateOrderStatus,
 } from "@/hooks/useAdminQueries";
-import { Eye, Loader2, MapPin, RefreshCw, Truck } from "lucide-react";
+import {
+  Download,
+  Eye,
+  Loader2,
+  MapPin,
+  Printer,
+  RefreshCw,
+  Truck,
+} from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
@@ -57,10 +65,20 @@ const STATUS_BADGE: Record<OrderStatus, string> = {
 };
 
 function formatDate(ts: bigint) {
-  return new Date(Number(ts / 1_000_000n)).toLocaleDateString("en-PK", {
+  return new Date(Number(ts / 1_000_000n)).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTime(ts: bigint) {
+  return new Date(Number(ts / 1_000_000n)).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -82,6 +100,10 @@ interface ParsedOrderNotes {
   paymentMethod?: string;
   couponCode?: string | null;
   notes?: string | null;
+  subtotal?: number;
+  tax?: number;
+  discount?: number;
+  deliveryCharge?: number;
 }
 
 function parseOrderNotes(notes?: string): ParsedOrderNotes | null {
@@ -91,6 +113,178 @@ function parseOrderNotes(notes?: string): ParsedOrderNotes | null {
   } catch {
     return null;
   }
+}
+
+function formatPaymentLabel(method?: string): string {
+  if (!method) return "—";
+  if (method === "cod") return "Cash on Delivery";
+  if (method === "upi") return "UPI Payment";
+  if (method === "online") return "Online Payment";
+  return method;
+}
+
+// Pad a string to a fixed width (left-align)
+function padEnd(str: string, len: number): string {
+  return str.length >= len
+    ? str.slice(0, len)
+    : str + " ".repeat(len - str.length);
+}
+
+// Pad a string to a fixed width (right-align)
+function padStart(str: string, len: number): string {
+  return str.length >= len
+    ? str.slice(0, len)
+    : " ".repeat(len - str.length) + str;
+}
+
+interface ReceiptOrder {
+  id: bigint;
+  userId: { toString(): string };
+  items: Array<{
+    menuItemId: bigint;
+    quantity: bigint;
+    unitPrice: number;
+    itemName?: string[] | string | null;
+  }>;
+  totalAmount: number;
+  createdAt: bigint;
+  notes?: string;
+  status: OrderStatus;
+}
+
+interface ReceiptProps {
+  order: ReceiptOrder;
+}
+
+function ReceiptContent({ order }: ReceiptProps) {
+  const parsed = parseOrderNotes(order.notes);
+  const customerName = parsed?.deliveryAddress?.fullName ?? "—";
+  const customerPhone = parsed?.deliveryAddress?.mobile ?? "—";
+  const paymentLabel = formatPaymentLabel(parsed?.paymentMethod);
+
+  // Calculate financials
+  const itemsSubtotal = order.items.reduce(
+    (sum, item) => sum + item.unitPrice * Number(item.quantity),
+    0,
+  );
+  const subtotal = parsed?.subtotal ?? itemsSubtotal;
+  const tax = parsed?.tax ?? 0;
+  const totalAmount = order.totalAmount;
+  const discount = Math.max(
+    0,
+    subtotal + tax - totalAmount + (parsed?.deliveryCharge ?? 0),
+  );
+  const amtReceived = totalAmount;
+
+  const LINE = "--------------------------------";
+
+  return (
+    <div
+      id="receipt-print-area"
+      className="font-mono text-[11px] leading-snug text-black bg-white w-full"
+      style={{ maxWidth: "80mm" }}
+    >
+      {/* Header */}
+      <div className="text-center font-bold text-sm mb-0.5">SALAD KHATORA</div>
+      <div className="text-center text-[10px]">
+        Plot no 14, Road no 27, Phase 2
+      </div>
+      <div className="text-center text-[10px]">Saket Colony, Hyderabad</div>
+      <div className="text-center text-[10px]">500062</div>
+      <div className="text-center text-[10px]">+91 7660005766</div>
+      <div className="text-center text-[10px] mt-0.5">
+        GST No: 36BZPPK8184L1Z9
+      </div>
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Order info */}
+      <div>Order ID: #{order.id.toString()}</div>
+      <div>Date : {formatDateTime(order.createdAt)}</div>
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Customer */}
+      <div>Customer: {customerName}</div>
+      <div>Phone : {customerPhone}</div>
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Items header */}
+      <div className="flex justify-between font-semibold">
+        <span>{padEnd("ITEM", 20)}</span>
+        <span>{padStart("QTY", 4)}</span>
+        <span>{padStart("AMT", 8)}</span>
+      </div>
+      <div className="my-0.5">{LINE}</div>
+
+      {/* Items list */}
+      {order.items.map((item) => {
+        const itemName =
+          Array.isArray(item.itemName) && item.itemName.length > 0
+            ? item.itemName[0]
+            : typeof item.itemName === "string" && item.itemName
+              ? item.itemName
+              : `Item #${item.menuItemId.toString()}`;
+        const qty = Number(item.quantity);
+        const amt = item.unitPrice * qty;
+
+        return (
+          <div key={item.menuItemId.toString()} className="mb-1">
+            {/* Item name wraps if long */}
+            <div className="break-words">{itemName}</div>
+            <div className="flex justify-between pl-2">
+              <span className="text-[10px] text-gray-600">Qty: {qty}</span>
+              <span>₹{amt.toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Subtotal / Discount / Tax */}
+      <div className="flex justify-between">
+        <span>{padEnd("Subtotal", 18)}</span>
+        <span>₹{subtotal.toLocaleString("en-IN")}</span>
+      </div>
+      {discount > 0 && (
+        <div className="flex justify-between">
+          <span>{padEnd("Discount", 18)}</span>
+          <span>-₹{discount.toLocaleString("en-IN")}</span>
+        </div>
+      )}
+      <div className="flex justify-between">
+        <span>{padEnd("Tax (GST)", 18)}</span>
+        <span>₹{tax.toLocaleString("en-IN")}</span>
+      </div>
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Total */}
+      <div className="flex justify-between font-bold text-[12px]">
+        <span>{padEnd("TOTAL", 18)}</span>
+        <span>₹{totalAmount.toLocaleString("en-IN")}</span>
+      </div>
+
+      <div className="my-1">{LINE}</div>
+
+      {/* Amount received */}
+      <div className="flex justify-between">
+        <span>{padEnd("Amt Received", 18)}</span>
+        <span>₹{amtReceived.toLocaleString("en-IN")}</span>
+      </div>
+
+      <div className="my-1 text-[10px]" />
+      <div>Payment: {paymentLabel}</div>
+
+      <div className="my-1">{LINE}</div>
+
+      <div className="text-center font-semibold mt-1">
+        Thank You, Visit Again!
+      </div>
+    </div>
+  );
 }
 
 export default function AdminOrders() {
@@ -112,20 +306,67 @@ export default function AdminOrders() {
     orderId: bigint | null;
   }>({ open: false, orderId: null });
 
+  // Receipt modal state
+  const [receiptModal, setReceiptModal] = useState<{
+    open: boolean;
+    orderId: bigint | null;
+  }>({ open: false, orderId: null });
+
+  const printStyleRef = useRef<HTMLStyleElement | null>(null);
+
   const viewOrder = viewModal.orderId
     ? orders?.find((o) => o.id === viewModal.orderId)
     : null;
 
+  const receiptOrder = receiptModal.orderId
+    ? orders?.find((o) => o.id === receiptModal.orderId)
+    : null;
+
+  // Inject print CSS when receipt modal opens, remove when it closes
+  useEffect(() => {
+    if (receiptModal.open) {
+      const style = document.createElement("style");
+      style.innerHTML = `
+        @media print {
+          body > * { display: none !important; }
+          #receipt-print-area {
+            display: block !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80mm;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            color: black;
+            background: white;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      printStyleRef.current = style;
+    } else {
+      if (printStyleRef.current) {
+        document.head.removeChild(printStyleRef.current);
+        printStyleRef.current = null;
+      }
+    }
+    return () => {
+      if (printStyleRef.current) {
+        document.head.removeChild(printStyleRef.current);
+        printStyleRef.current = null;
+      }
+    };
+  }, [receiptModal.open]);
+
   function getAssignedRiderName(orderId: bigint): string | null {
     const delivery = deliveries?.find((d) => d.orderId === orderId);
     if (!delivery) return null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyDelivery = delivery as any;
-    const partner = anyDelivery.deliveryPartner;
-    if (partner) return partner;
-    // Fall back to rider lookup for old schema
-    if (anyDelivery.riderId) {
-      const rider = riders?.find((r) => r.id === anyDelivery.riderId);
+    // Prefer riderName stored directly in delivery record (new schema)
+    if (delivery.riderName) return delivery.riderName;
+    // Fall back to rider lookup for old records
+    if (delivery.riderId) {
+      const rider = riders?.find((r) => r.id === delivery.riderId);
       return rider?.name ?? null;
     }
     return null;
@@ -151,6 +392,10 @@ export default function AdminOrders() {
     setViewModal({ open: true, orderId });
   }
 
+  function openReceiptModal(orderId: bigint) {
+    setReceiptModal({ open: true, orderId });
+  }
+
   function handleAssignRider() {
     if (!assignModal.orderId || !selectedRider) return;
     assignRider.mutate(
@@ -163,6 +408,10 @@ export default function AdminOrders() {
         onError: () => toast.error("Failed to assign rider"),
       },
     );
+  }
+
+  function handlePrint() {
+    window.print();
   }
 
   return (
@@ -238,6 +487,9 @@ export default function AdminOrders() {
                   Status
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                  Receipt
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
                   Actions
                 </TableHead>
               </TableRow>
@@ -292,6 +544,19 @@ export default function AdminOrders() {
                       >
                         {statusLabel}
                       </Badge>
+                    </TableCell>
+                    {/* Standalone Receipt column */}
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-1.5 text-xs border-border whitespace-nowrap"
+                        onClick={() => openReceiptModal(order.id)}
+                        data-ocid="admin.orders.print.button"
+                      >
+                        <Printer className="h-3 w-3" />
+                        Print Receipt
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -519,6 +784,42 @@ export default function AdminOrders() {
                   </span>
                 </div>
 
+                {/* Assigned Delivery Partner */}
+                {(() => {
+                  const delivery = deliveries?.find(
+                    (d) => d.orderId === viewOrder.id,
+                  );
+                  const riderName = delivery?.riderName
+                    ? delivery.riderName
+                    : delivery?.riderId
+                      ? riders?.find((r) => r.id === delivery.riderId)?.name
+                      : null;
+                  return (
+                    <div className="bg-muted/30 rounded-xl p-3">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-2 flex items-center gap-1">
+                        <Truck className="h-3 w-3" />
+                        Assigned Rider
+                      </p>
+                      {riderName ? (
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-medium text-foreground">
+                            {riderName}
+                          </p>
+                          {delivery?.assignedAt && (
+                            <p className="text-xs text-muted-foreground">
+                              Assigned: {formatDateTime(delivery.assignedAt)}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Not assigned yet
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Delivery address + payment from notes */}
                 {(() => {
                   const parsed = parseOrderNotes(viewOrder.notes);
@@ -622,6 +923,68 @@ export default function AdminOrders() {
               Close
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Receipt Modal */}
+      <Dialog
+        open={receiptModal.open}
+        onOpenChange={(open) => setReceiptModal({ open, orderId: null })}
+      >
+        <DialogContent
+          className="max-w-sm"
+          data-ocid="admin.orders.receipt.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg flex items-center gap-2">
+              <Printer className="h-4 w-4 text-primary" />
+              Receipt — Order #{receiptOrder?.id.toString() ?? "—"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {receiptOrder ? (
+            <>
+              {/* Receipt preview area */}
+              <div className="border border-dashed border-border rounded-lg p-4 bg-white overflow-auto max-h-[55vh]">
+                <ReceiptContent order={receiptOrder} />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={() =>
+                    setReceiptModal({ open: false, orderId: null })
+                  }
+                  data-ocid="admin.orders.receipt.close_button"
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 border-primary/30 text-primary hover:bg-primary/5"
+                  onClick={handlePrint}
+                  data-ocid="admin.orders.receipt.print_button"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print Receipt
+                </Button>
+                <Button
+                  className="flex-1 gap-2 bg-primary hover:bg-primary/90"
+                  onClick={handlePrint}
+                  data-ocid="admin.orders.receipt.save_button"
+                >
+                  <Download className="h-4 w-4" />
+                  Save as PDF
+                </Button>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Order not found.
+            </p>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -41,13 +41,20 @@ const EMPTY_FORM: RiderForm = { name: "", phone: "", available: true };
 
 function formatDate(ts: bigint | undefined) {
   if (ts === undefined) return "—";
-  return new Date(Number(ts / 1_000_000n)).toLocaleDateString("en-PK", {
+  return new Date(Number(ts / 1_000_000n)).toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+interface CustomerInfo {
+  name: string;
+  phone: string;
+  address: string;
+  pincode: string;
 }
 
 export default function AdminDelivery() {
@@ -116,9 +123,33 @@ export default function AdminDelivery() {
     }
   }
 
-  function getOrderAmount(orderId: bigint): string {
+  function parseCustomerInfo(orderId: bigint): CustomerInfo | null {
     const order = orders?.find((o) => o.id === orderId);
-    return order ? `₹${order.totalAmount.toLocaleString("en-IN")}` : "—";
+    if (!order?.notes) return null;
+    try {
+      const parsed = JSON.parse(order.notes) as {
+        deliveryAddress?: {
+          fullName?: string;
+          mobile?: string;
+          house?: string;
+          street?: string;
+          city?: string;
+          pincode?: string;
+        };
+      };
+      const addr = parsed?.deliveryAddress;
+      if (!addr) return null;
+      return {
+        name: addr.fullName ?? "—",
+        phone: addr.mobile ?? "—",
+        address: [addr.house, addr.street, addr.city]
+          .filter(Boolean)
+          .join(", "),
+        pincode: addr.pincode ?? "",
+      };
+    } catch {
+      return null;
+    }
   }
 
   const isPending = addRider.isPending || updateRider.isPending;
@@ -253,7 +284,7 @@ export default function AdminDelivery() {
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="bg-white rounded-xl border border-border overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
@@ -261,7 +292,13 @@ export default function AdminDelivery() {
                     Order ID
                   </TableHead>
                   <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                    Order Amount
+                    Customer Name
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Phone
+                  </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Delivery Address
                   </TableHead>
                   <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
                     Delivery Partner
@@ -276,13 +313,14 @@ export default function AdminDelivery() {
               </TableHeader>
               <TableBody>
                 {deliveries.map((delivery, i) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const anyDelivery = delivery as any;
-                  const partner: string = anyDelivery.deliveryPartner ?? "";
-                  const status: string =
-                    anyDelivery.deliveryStatus ?? "pending";
-                  const deliveryTime: bigint | undefined =
-                    anyDelivery.deliveryTime;
+                  const partner: string =
+                    delivery.riderName ??
+                    (delivery.riderId
+                      ? (riders?.find((r) => r.id === delivery.riderId)?.name ??
+                        "")
+                      : "");
+                  const status: string = delivery.deliveryStatus ?? "pending";
+                  const customerInfo = parseCustomerInfo(delivery.orderId);
                   return (
                     <TableRow
                       key={delivery.orderId.toString()}
@@ -292,8 +330,23 @@ export default function AdminDelivery() {
                       <TableCell className="font-mono text-xs font-semibold text-foreground">
                         #{delivery.orderId.toString()}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {getOrderAmount(delivery.orderId)}
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {customerInfo?.name ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground font-mono">
+                        {customerInfo?.phone ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                        {customerInfo ? (
+                          <span>
+                            {customerInfo.address}
+                            {customerInfo.pincode
+                              ? ` - ${customerInfo.pincode}`
+                              : ""}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </TableCell>
                       <TableCell className="text-sm font-medium text-foreground">
                         {partner || "—"}
@@ -314,7 +367,7 @@ export default function AdminDelivery() {
                         </span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {formatDate(deliveryTime)}
+                        {formatDate(delivery.assignedAt)}
                       </TableCell>
                     </TableRow>
                   );

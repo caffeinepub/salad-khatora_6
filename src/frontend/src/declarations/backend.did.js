@@ -83,7 +83,9 @@ export const UserRole = IDL.Variant({
 export const OrderDelivery = IDL.Record({
   'assignedAt' : IDL.Opt(IDL.Int),
   'riderId' : IDL.Opt(IDL.Nat),
+  'deliveryStatus' : IDL.Opt(IDL.Text),
   'orderId' : IDL.Nat,
+  'riderName' : IDL.Opt(IDL.Text),
 });
 export const OrderStatus = IDL.Variant({
   'preparing' : IDL.Null,
@@ -327,7 +329,9 @@ export const idlFactory = ({ IDL }) => {
   const OrderDelivery = IDL.Record({
     'assignedAt' : IDL.Opt(IDL.Int),
     'riderId' : IDL.Opt(IDL.Nat),
+    'deliveryStatus' : IDL.Opt(IDL.Text),
     'orderId' : IDL.Nat,
+    'riderName' : IDL.Opt(IDL.Text),
   });
   const OrderStatus = IDL.Variant({
     'preparing' : IDL.Null,

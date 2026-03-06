@@ -78,7 +78,9 @@ export interface Order {
 export interface OrderDelivery {
   'assignedAt' : [] | [bigint],
   'riderId' : [] | [bigint],
+  'deliveryStatus' : [] | [string],
   'orderId' : bigint,
+  'riderName' : [] | [string],
 }
 export interface OrderItem {
   'quantity' : bigint,

@@ -161,7 +161,9 @@ export interface MenuItem {
 export interface OrderDelivery {
     assignedAt?: bigint;
     riderId?: bigint;
+    deliveryStatus?: string;
     orderId: bigint;
+    riderName?: string;
 }
 export interface DeliveryRider {
     id: bigint;
@@ -1271,16 +1273,22 @@ function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function from_candid_record_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     assignedAt: [] | [bigint];
     riderId: [] | [bigint];
+    deliveryStatus: [] | [string];
     orderId: bigint;
+    riderName: [] | [string];
 }): {
     assignedAt?: bigint;
     riderId?: bigint;
+    deliveryStatus?: string;
     orderId: bigint;
+    riderName?: string;
 } {
     return {
         assignedAt: record_opt_to_undefined(from_candid_opt_n34(_uploadFile, _downloadFile, value.assignedAt)),
         riderId: record_opt_to_undefined(from_candid_opt_n18(_uploadFile, _downloadFile, value.riderId)),
-        orderId: value.orderId
+        deliveryStatus: record_opt_to_undefined(from_candid_opt_n20(_uploadFile, _downloadFile, value.deliveryStatus)),
+        orderId: value.orderId,
+        riderName: record_opt_to_undefined(from_candid_opt_n20(_uploadFile, _downloadFile, value.riderName))
     };
 }
 function from_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
