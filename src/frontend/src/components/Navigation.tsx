@@ -26,8 +26,21 @@ export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const { data: isAdmin } = useIsCallerAdmin();
-  // Show Admin tab only when confirmed admin
-  const showAdmin = isAuthenticated && isAdmin === true;
+  // Show Admin tab when backend confirms admin OR when the principal is in
+  // the localStorage cache (so the tab appears instantly on page reload
+  // without waiting for a backend round-trip).
+  const currentPrincipal = identity?.getPrincipal().toString() ?? "";
+  const cachedAdmins: string[] = (() => {
+    try {
+      const stored = localStorage.getItem("sk_admin_principals");
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  })();
+  const showAdmin =
+    isAuthenticated &&
+    (isAdmin === true || cachedAdmins.includes(currentPrincipal));
 
   const navLinks = [
     { to: "/", label: "Home", ocid: "nav.home_link", authOnly: false },

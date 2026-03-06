@@ -127,7 +127,9 @@ export const Subscription = IDL.Record({
 export const AppSettings = IDL.Record({
   'deliveryCharge' : IDL.Float64,
   'taxEnabled' : IDL.Bool,
+  'gstNumber' : IDL.Text,
   'businessName' : IDL.Text,
+  'businessAddress' : IDL.Text,
   'whatsappNumber' : IDL.Text,
   'freeDeliveryAbove' : IDL.Float64,
   'servicePincodes' : IDL.Vec(IDL.Text),
@@ -374,7 +376,9 @@ export const idlFactory = ({ IDL }) => {
   const AppSettings = IDL.Record({
     'deliveryCharge' : IDL.Float64,
     'taxEnabled' : IDL.Bool,
+    'gstNumber' : IDL.Text,
     'businessName' : IDL.Text,
+    'businessAddress' : IDL.Text,
     'whatsappNumber' : IDL.Text,
     'freeDeliveryAbove' : IDL.Float64,
     'servicePincodes' : IDL.Vec(IDL.Text),

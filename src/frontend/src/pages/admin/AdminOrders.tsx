@@ -43,7 +43,7 @@ import {
   Truck,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FC } from "react";
 import { toast } from "sonner";
 
@@ -310,20 +310,6 @@ export default function AdminOrders() {
   const updateStatus = useUpdateOrderStatus();
   const assignRider = useAssignRiderToOrder();
 
-  const [businessDetails, setBusinessDetails] = useState<{
-    gstNumber: string;
-    businessAddress: string;
-  }>(() => {
-    try {
-      const stored = localStorage.getItem("sk_business_details");
-      return stored
-        ? (JSON.parse(stored) as { gstNumber: string; businessAddress: string })
-        : { gstNumber: "", businessAddress: "" };
-    } catch {
-      return { gstNumber: "", businessAddress: "" };
-    }
-  });
-
   const [assignModal, setAssignModal] = useState<{
     open: boolean;
     orderId: bigint | null;
@@ -410,25 +396,6 @@ export default function AdminOrders() {
   const receiptOrder = receiptModal.orderId
     ? orders?.find((o) => o.id === receiptModal.orderId)
     : null;
-
-  // Refresh businessDetails from localStorage when receipt modal opens
-  useEffect(() => {
-    if (receiptModal.open) {
-      try {
-        const stored = localStorage.getItem("sk_business_details");
-        if (stored) {
-          setBusinessDetails(
-            JSON.parse(stored) as {
-              gstNumber: string;
-              businessAddress: string;
-            },
-          );
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, [receiptModal.open]);
 
   function getAssignedRiderName(orderId: bigint): string | null {
     const delivery = deliveries?.find((d) => d.orderId === orderId);
@@ -1022,8 +989,8 @@ export default function AdminOrders() {
                     order={receiptOrder}
                     businessDetails={{
                       businessName: settings?.businessName || "SALAD KHATORA",
-                      gstNumber: businessDetails.gstNumber,
-                      businessAddress: businessDetails.businessAddress,
+                      gstNumber: settings?.gstNumber ?? "",
+                      businessAddress: settings?.businessAddress ?? "",
                     }}
                   />
                 </div>

@@ -1,10 +1,10 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
-import Principal "mo:core/Principal";
 
 module {
-  // Type definitions matching the main actor's state
-  type UserProfile = {
+  // COPY DATA STRUCTURES FROM BOTH VERSIONS
+
+  public type UserProfile = {
     name : Text;
     mobileNumber : Text;
     email : ?Text;
@@ -20,12 +20,12 @@ module {
     dailyCalories : ?Nat;
   };
 
-  type AdminUserRecord = {
+  public type AdminUserRecord = {
     principal : Principal;
     profile : UserProfile;
   };
 
-  type MenuItem = {
+  public type MenuItem = {
     id : Nat;
     name : Text;
     description : Text;
@@ -37,13 +37,13 @@ module {
     imageUrl : ?Text;
   };
 
-  type OrderItem = {
+  public type OrderItem = {
     menuItemId : Nat;
     quantity : Nat;
     unitPrice : Float;
   };
 
-  type OrderStatus = {
+  public type OrderStatus = {
     #pending;
     #confirmed;
     #preparing;
@@ -52,7 +52,7 @@ module {
     #cancelled;
   };
 
-  type Order = {
+  public type Order = {
     id : Nat;
     userId : Principal;
     items : [OrderItem];
@@ -62,18 +62,18 @@ module {
     notes : ?Text;
   };
 
-  type SubscriptionPlan = {
+  public type SubscriptionPlan = {
     #weekly;
     #monthly;
   };
 
-  type SubscriptionStatus = {
+  public type SubscriptionStatus = {
     #active;
     #paused;
     #cancelled;
   };
 
-  type Subscription = {
+  public type Subscription = {
     id : Nat;
     userId : Principal;
     plan : SubscriptionPlan;
@@ -84,7 +84,7 @@ module {
     status : SubscriptionStatus;
   };
 
-  type IngredientItem = {
+  public type IngredientItem = {
     id : Nat;
     name : Text;
     quantity : Nat;
@@ -93,12 +93,12 @@ module {
     unit : Text;
   };
 
-  type CouponDiscountType = {
+  public type CouponDiscountType = {
     #fixed;
     #percentage;
   };
 
-  type Coupon = {
+  public type Coupon = {
     id : Nat;
     code : Text;
     discountType : CouponDiscountType;
@@ -109,14 +109,14 @@ module {
     active : Bool;
   };
 
-  type DeliveryRider = {
+  public type DeliveryRider = {
     id : Nat;
     name : Text;
     phone : Text;
     available : Bool;
   };
 
-  type OrderDelivery = {
+  public type OrderDelivery = {
     orderId : Nat;
     riderId : ?Nat;
     riderName : ?Text;
@@ -124,20 +124,20 @@ module {
     assignedAt : ?Int;
   };
 
-  type DashboardStats = {
+  public type DashboardStats = {
     todayOrders : Nat;
     totalRevenue : Float;
     activeSubscriptions : Nat;
     totalCustomers : Nat;
   };
 
-  type SaladIngredient = {
+  public type SaladIngredient = {
     saladId : Nat;
     ingredientId : Nat;
     quantityRequired : Nat;
   };
 
-  type AppSettings = {
+  public type OldAppSettings = {
     businessName : Text;
     whatsappNumber : Text;
     taxEnabled : Bool;
@@ -147,7 +147,20 @@ module {
     servicePincodes : [Text];
   };
 
-  type OldActor = {
+  // New AppSettings type
+  public type NewAppSettings = {
+    businessName : Text;
+    whatsappNumber : Text;
+    taxEnabled : Bool;
+    taxPercentage : Float;
+    deliveryCharge : Float;
+    freeDeliveryAbove : Float;
+    servicePincodes : [Text];
+    gstNumber : Text;
+    businessAddress : Text;
+  };
+
+  public type OldActor = {
     userProfiles : Map.Map<Principal, UserProfile>;
     menuItems : Map.Map<Nat, MenuItem>;
     orders : Map.Map<Nat, Order>;
@@ -158,10 +171,30 @@ module {
     orderDeliveries : Map.Map<Nat, OrderDelivery>;
     saladIngredients : Map.Map<Nat, [SaladIngredient]>;
     nextSubscriptionId : Nat;
-    appSettings : AppSettings;
+    appSettings : OldAppSettings;
   };
 
-  public func run(old : OldActor) : OldActor {
-    old;
+  public type NewActor = {
+    userProfiles : Map.Map<Principal, UserProfile>;
+    menuItems : Map.Map<Nat, MenuItem>;
+    orders : Map.Map<Nat, Order>;
+    subscriptions : Map.Map<Nat, Subscription>;
+    ingredients : Map.Map<Nat, IngredientItem>;
+    coupons : Map.Map<Nat, Coupon>;
+    deliveryRiders : Map.Map<Nat, DeliveryRider>;
+    orderDeliveries : Map.Map<Nat, OrderDelivery>;
+    saladIngredients : Map.Map<Nat, [SaladIngredient]>;
+    nextSubscriptionId : Nat;
+    appSettings : NewAppSettings;
+  };
+
+  public func run(old : OldActor) : NewActor {
+    let newAppSettings : NewAppSettings = {
+      old.appSettings with
+      gstNumber = "";
+      businessAddress = "";
+    };
+
+    { old with appSettings = newAppSettings };
   };
 };

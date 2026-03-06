@@ -32,6 +32,8 @@ import { toast } from "sonner";
 const DEFAULT_SETTINGS: AppSettings = {
   businessName: "Salad Khatora",
   whatsappNumber: "7660005766",
+  gstNumber: "",
+  businessAddress: "",
   taxEnabled: false,
   taxPercentage: 0,
   deliveryCharge: 0,
@@ -91,27 +93,7 @@ export default function AdminSettings() {
   );
   const [newPincode, setNewPincode] = useState("");
 
-  // Load business details (gstNumber, businessAddress) from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("sk_business_details");
-      if (stored) {
-        const parsed = JSON.parse(stored) as {
-          gstNumber?: string;
-          businessAddress?: string;
-        };
-        setGeneral((prev) => ({
-          ...prev,
-          gstNumber: parsed.gstNumber ?? "",
-          businessAddress: parsed.businessAddress ?? "",
-        }));
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, []);
-
-  // Populate from loaded settings
+  // Populate from loaded settings (including gstNumber and businessAddress from backend)
   useEffect(() => {
     if (settings) {
       setGeneral((prev) => ({
@@ -119,6 +101,8 @@ export default function AdminSettings() {
         businessName: settings.businessName || DEFAULT_SETTINGS.businessName,
         whatsappNumber:
           settings.whatsappNumber || DEFAULT_SETTINGS.whatsappNumber,
+        gstNumber: settings.gstNumber ?? prev.gstNumber,
+        businessAddress: settings.businessAddress ?? prev.businessAddress,
       }));
       setTax({
         taxEnabled: settings.taxEnabled ?? DEFAULT_SETTINGS.taxEnabled,
@@ -136,6 +120,8 @@ export default function AdminSettings() {
     return {
       businessName: general.businessName,
       whatsappNumber: general.whatsappNumber,
+      gstNumber: general.gstNumber,
+      businessAddress: general.businessAddress,
       taxEnabled: tax.taxEnabled,
       taxPercentage: Number.parseFloat(tax.taxPercentage) || 0,
       deliveryCharge: Number.parseFloat(delivery.deliveryCharge) || 0,
@@ -154,14 +140,6 @@ export default function AdminSettings() {
   async function handleSaveGeneral() {
     try {
       await saveSettings.mutateAsync(buildFullSettings());
-      // Save GST number and business address to localStorage
-      localStorage.setItem(
-        "sk_business_details",
-        JSON.stringify({
-          gstNumber: general.gstNumber,
-          businessAddress: general.businessAddress,
-        }),
-      );
       toast.success("General settings saved");
     } catch {
       toast.error("Failed to save general settings");

@@ -17,7 +17,9 @@ export interface AdminUserRecord {
 export interface AppSettings {
   'deliveryCharge' : number,
   'taxEnabled' : boolean,
+  'gstNumber' : string,
   'businessName' : string,
+  'businessAddress' : string,
   'whatsappNumber' : string,
   'freeDeliveryAbove' : number,
   'servicePincodes' : Array<string>,

@@ -1,5 +1,6 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type {
   AdminUserRecord,
   AppSettings,
@@ -651,28 +652,104 @@ export function useSaveAppSettings() {
 
 // ─── Admin: Auth Check ────────────────────────────────────────────────────────
 
+const ADMIN_PRINCIPAL_STORAGE_KEY = "sk_admin_principals";
+
+function getStoredAdminPrincipals(): string[] {
+  try {
+    const stored = localStorage.getItem(ADMIN_PRINCIPAL_STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeAdminPrincipal(principal: string) {
+  try {
+    const existing = getStoredAdminPrincipals();
+    if (!existing.includes(principal)) {
+      localStorage.setItem(
+        ADMIN_PRINCIPAL_STORAGE_KEY,
+        JSON.stringify([...existing, principal]),
+      );
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function removeAdminPrincipal(principal: string) {
+  try {
+    const existing = getStoredAdminPrincipals();
+    localStorage.setItem(
+      ADMIN_PRINCIPAL_STORAGE_KEY,
+      JSON.stringify(existing.filter((p) => p !== principal)),
+    );
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
   const { identity, isInitializing } = useInternetIdentity();
+  const queryClient = useQueryClient();
   const principal = identity?.getPrincipal().toString() ?? "anonymous";
-  return useQuery<boolean>({
+  const isRealIdentity = !!identity && !identity.getPrincipal().isAnonymous();
+
+  // Fast-path: if we have a stored admin principal, return true immediately
+  // while the backend check runs in the background.
+  const storedAdmins = getStoredAdminPrincipals();
+  const isCachedAdmin = isRealIdentity && storedAdmins.includes(principal);
+
+  // Force an immediate refetch whenever the principal changes (login/logout).
+  useEffect(() => {
+    if (isRealIdentity) {
+      void queryClient.invalidateQueries({
+        queryKey: ["isCallerAdmin", principal],
+      });
+    }
+  }, [principal, isRealIdentity, queryClient]);
+
+  const query = useQuery<boolean>({
     queryKey: ["isCallerAdmin", principal],
     queryFn: async () => {
-      if (!actor) return false;
-      // Only check admin status when we have a real authenticated identity
-      if (!identity || identity.getPrincipal().isAnonymous()) return false;
-      const result = await actor.isCallerAdmin();
-      console.log("Logged user isAdmin:", result, "principal:", principal);
-      return result;
+      if (!actor) return isCachedAdmin;
+      if (!isRealIdentity) return false;
+      try {
+        // isCallerAdmin() may throw a backend trap if the user is not yet
+        // registered (i.e. _initializeAccessControlWithSecret hasn't been
+        // called yet). Treat any error as "not admin" and retry.
+        const result = await actor.isCallerAdmin();
+        console.log("Logged user isAdmin:", result, "principal:", principal);
+        if (result) {
+          storeAdminPrincipal(principal);
+        } else {
+          removeAdminPrincipal(principal);
+          console.warn(
+            "Admin check: user is registered but not as admin. Use assignCallerUserRole to grant admin access. Principal:",
+            principal,
+          );
+        }
+        return result;
+      } catch (err) {
+        console.warn(
+          "isCallerAdmin check failed (user may not be registered yet):",
+          err,
+        );
+        // Fall back to localStorage cache while retrying
+        return isCachedAdmin;
+      }
     },
-    enabled:
-      !!actor &&
-      !isFetching &&
-      !isInitializing &&
-      !!identity &&
-      !identity.getPrincipal().isAnonymous(),
+    // Seed the initial data from localStorage so the tab shows immediately on reload
+    initialData: isCachedAdmin ? true : undefined,
+    enabled: !!actor && !isFetching && !isInitializing && isRealIdentity,
     staleTime: 0,
+    gcTime: 0,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
+
+  return query;
 }

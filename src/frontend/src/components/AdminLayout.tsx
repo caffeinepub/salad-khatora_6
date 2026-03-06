@@ -1,13 +1,17 @@
 import { useIsCallerAdmin } from "@/hooks/useAdminQueries";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
   BarChart3,
   Calendar,
+  Check,
   ChevronRight,
+  Copy,
   Leaf,
   Loader2,
   Package,
+  RefreshCw,
   Settings2,
   ShieldAlert,
   ShoppingCart,
@@ -17,6 +21,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 
 const ADMIN_LINKS = [
   { to: "/admin", label: "Dashboard", icon: BarChart3, exact: true },
@@ -53,15 +58,46 @@ const ADMIN_LINKS = [
 export default function AdminLayout() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { data: isAdmin, isLoading: isCheckingAdmin } = useIsCallerAdmin();
+  const {
+    data: isAdmin,
+    isLoading: isCheckingAdmin,
+    isFetching: isRefetchingAdmin,
+  } = useIsCallerAdmin();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
+
+  // Also check localStorage cache for immediate display
+  const currentPrincipal = identity?.getPrincipal().toString() ?? "";
+  const cachedAdmins: string[] = (() => {
+    try {
+      const stored = localStorage.getItem("sk_admin_principals");
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  })();
+  const isCachedAdmin =
+    isAuthenticated && cachedAdmins.includes(currentPrincipal);
+
+  // Show loader while initializing identity OR while performing first-time
+  // admin check AND we have no cached result to fall back to.
+  const isStillChecking =
+    isInitializing ||
+    (isCheckingAdmin && !isCachedAdmin) ||
+    // Also keep showing the loader while the actor is being set up
+    // (isAdmin is undefined means the query hasn't resolved yet)
+    (isAuthenticated &&
+      isAdmin === undefined &&
+      isRefetchingAdmin &&
+      !isCachedAdmin);
 
   const isActive = (link: { to: string; exact: boolean }) =>
     link.exact
       ? location.pathname === link.to
       : location.pathname.startsWith(link.to);
 
-  if (isInitializing || isCheckingAdmin) {
+  if (isStillChecking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div
@@ -75,34 +111,155 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isAuthenticated || !isAdmin) {
+  // Deny access only when we have a definitive answer (not just undefined)
+  // OR when cached result is also absent.
+  if (!isAuthenticated || (isAdmin === false && !isCachedAdmin)) {
+    // Not logged in at all — show simple "please log in" screen
+    if (!isAuthenticated) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-sm w-full text-center"
+            data-ocid="admin.error_state"
+          >
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
+              <ShieldAlert className="h-8 w-8 text-destructive" />
+            </div>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+              Access Denied
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Please log in with an admin account to access this area.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-primary hover:underline font-medium text-sm"
+              data-ocid="admin.home.link"
+            >
+              <Leaf className="h-4 w-4" />
+              Back to Salad Khatora
+            </Link>
+          </motion.div>
+        </div>
+      );
+    }
+
+    // Logged in but NOT admin — show helpful setup instructions
+    const myPrincipal = identity?.getPrincipal().toString() ?? "";
+
+    function handleCopyPrincipal() {
+      void navigator.clipboard.writeText(myPrincipal).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+
+    function handleRefreshAdminCheck() {
+      void queryClient.invalidateQueries({
+        queryKey: ["isCallerAdmin", myPrincipal],
+      });
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="max-w-sm w-full text-center"
+          className="max-w-md w-full"
           data-ocid="admin.error_state"
         >
-          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
-            <ShieldAlert className="h-8 w-8 text-destructive" />
+          <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
+            <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
+              <ShieldAlert className="h-7 w-7 text-amber-500" />
+            </div>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-2 text-center">
+              Admin Setup Required
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6 text-center">
+              You are logged in but have not been granted admin access yet.
+              Share your principal with an existing admin or follow the setup
+              steps below.
+            </p>
+
+            {/* Principal display */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Your Principal ID
+              </p>
+              <div className="flex items-center gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2">
+                <code className="text-xs font-mono text-foreground flex-1 break-all">
+                  {myPrincipal}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopyPrincipal}
+                  className="flex-shrink-0 p-1.5 rounded-md hover:bg-muted transition-colors"
+                  data-ocid="admin.setup.copy_button"
+                  title="Copy principal"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Setup steps */}
+            <div className="bg-muted/20 rounded-xl border border-border p-4 mb-5 space-y-3 text-sm">
+              <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
+                How to get admin access
+              </p>
+              <div className="space-y-2 text-muted-foreground text-xs">
+                <p>
+                  <span className="font-semibold text-foreground">
+                    Option 1 — First-time setup:
+                  </span>{" "}
+                  If no admin has been set up yet, log out and log back in as
+                  the very first user. The app will automatically assign you the
+                  admin role.
+                </p>
+                <p>
+                  <span className="font-semibold text-foreground">
+                    Option 2 — Existing admin:
+                  </span>{" "}
+                  Ask an existing admin to call{" "}
+                  <code className="bg-muted px-1 py-0.5 rounded font-mono">
+                    assignCallerUserRole
+                  </code>{" "}
+                  with your principal above and the{" "}
+                  <code className="bg-muted px-1 py-0.5 rounded font-mono">
+                    #admin
+                  </code>{" "}
+                  role.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleRefreshAdminCheck}
+                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors"
+                data-ocid="admin.setup.refresh_button"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh — Check Admin Status
+              </button>
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground font-medium text-sm py-2 transition-colors"
+                data-ocid="admin.home.link"
+              >
+                <Leaf className="h-4 w-4 text-primary" />
+                Back to Salad Khatora
+              </Link>
+            </div>
           </div>
-          <h2 className="font-display text-2xl font-bold text-foreground mb-2">
-            Access Denied
-          </h2>
-          <p className="text-muted-foreground text-sm mb-6">
-            {!isAuthenticated
-              ? "Please log in with an admin account to access this area."
-              : "You do not have permission to access the admin panel."}
-          </p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-primary hover:underline font-medium text-sm"
-            data-ocid="admin.home.link"
-          >
-            <Leaf className="h-4 w-4" />
-            Back to Salad Khatora
-          </Link>
         </motion.div>
       </div>
     );
