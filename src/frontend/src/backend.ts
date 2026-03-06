@@ -278,6 +278,7 @@ export interface backendInterface {
     toggleAvailability(id: bigint): Promise<void>;
     updateCoupon(coupon: Coupon): Promise<void>;
     updateDeliveryRider(rider: DeliveryRider): Promise<void>;
+    updateDeliveryStatus(orderId: bigint, deliveryStatus: string): Promise<void>;
     updateIngredient(item: IngredientItem): Promise<void>;
     updateMenuItem(item: MenuItem): Promise<void>;
     updateOrderStatus(orderId: bigint, status: OrderStatus): Promise<void>;
@@ -1041,6 +1042,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateDeliveryRider(arg0);
+            return result;
+        }
+    }
+    async updateDeliveryStatus(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateDeliveryStatus(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateDeliveryStatus(arg0, arg1);
             return result;
         }
     }

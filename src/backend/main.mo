@@ -7,14 +7,11 @@ import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
-
-
+import Migration "migration";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-
-
-
+(with migration = Migration.run)
 actor {
   /////////////////////
   // CONSTANTS       //
@@ -878,7 +875,10 @@ actor {
 
     switch (orders.get(orderId)) {
       case (null) { Runtime.trap("Order not found") };
-      case (?_) {};
+      case (?order) {
+        // Update order status to outForDelivery
+        orders.add(orderId, { order with status = #outForDelivery });
+      };
     };
 
     switch (deliveryRiders.get(riderId)) {
@@ -892,6 +892,34 @@ actor {
           assignedAt = ?Time.now();
         };
         orderDeliveries.add(orderId, delivery);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateDeliveryStatus(orderId : Nat, deliveryStatus : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update delivery status");
+    };
+
+    switch (orders.get(orderId)) {
+      case (null) { Runtime.trap("Order not found") };
+      case (?order) {
+        let newOrderStatus : OrderStatus = switch (deliveryStatus) {
+          case ("pickedUp") { #outForDelivery };
+          case ("outForDelivery") { #outForDelivery };
+          case ("delivered") { #delivered };
+          case (_) { #outForDelivery };
+        };
+
+        orders.add(orderId, { order with status = newOrderStatus });
+
+        switch (orderDeliveries.get(orderId)) {
+          case (null) { Runtime.trap("Order delivery record not found") };
+          case (?delivery) {
+            let updatedDelivery = { delivery with deliveryStatus = ?deliveryStatus };
+            orderDeliveries.add(orderId, updatedDelivery);
+          };
+        };
       };
     };
   };

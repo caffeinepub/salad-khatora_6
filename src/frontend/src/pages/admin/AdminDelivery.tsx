@@ -9,6 +9,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -24,6 +31,7 @@ import {
   useAllDeliveryRiders,
   useAllOrderDeliveries,
   useUpdateDeliveryRider,
+  useUpdateDeliveryStatus,
 } from "@/hooks/useAdminQueries";
 import { useAllOrders } from "@/hooks/useAdminQueries";
 import { Loader2, Pencil, Plus, Truck } from "lucide-react";
@@ -64,6 +72,7 @@ export default function AdminDelivery() {
   const { data: orders } = useAllOrders();
   const addRider = useAddDeliveryRider();
   const updateRider = useUpdateDeliveryRider();
+  const updateStatus = useUpdateDeliveryStatus();
 
   const [modal, setModal] = useState<{
     open: boolean;
@@ -149,6 +158,21 @@ export default function AdminDelivery() {
       };
     } catch {
       return null;
+    }
+  }
+
+  function getStatusLabel(status: string): string {
+    switch (status) {
+      case "assigned":
+        return "Assigned";
+      case "pickedUp":
+        return "Picked Up";
+      case "outForDelivery":
+        return "Out for Delivery";
+      case "delivered":
+        return "Delivered";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
   }
 
@@ -309,6 +333,9 @@ export default function AdminDelivery() {
                   <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
                     Delivery Time
                   </TableHead>
+                  <TableHead className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,7 +346,7 @@ export default function AdminDelivery() {
                       ? (riders?.find((r) => r.id === delivery.riderId)?.name ??
                         "")
                       : "");
-                  const status: string = delivery.deliveryStatus ?? "pending";
+                  const status: string = delivery.deliveryStatus ?? "assigned";
                   const customerInfo = parseCustomerInfo(delivery.orderId);
                   return (
                     <TableRow
@@ -336,9 +363,9 @@ export default function AdminDelivery() {
                       <TableCell className="text-sm text-muted-foreground font-mono">
                         {customerInfo?.phone ?? "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[200px]">
+                      <TableCell className="text-xs text-muted-foreground w-[200px] max-w-[200px]">
                         {customerInfo ? (
-                          <span>
+                          <span className="block break-words whitespace-normal leading-relaxed">
                             {customerInfo.address}
                             {customerInfo.pincode
                               ? ` - ${customerInfo.pincode}`
@@ -363,11 +390,49 @@ export default function AdminDelivery() {
                                   : "bg-amber-50 border-amber-200 text-amber-700"
                           }`}
                         >
-                          {status}
+                          {getStatusLabel(status)}
                         </span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDate(delivery.assignedAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={status}
+                          onValueChange={(newValue) => {
+                            updateStatus.mutate(
+                              { orderId: delivery.orderId, status: newValue },
+                              {
+                                onSuccess: () =>
+                                  toast.success("Status updated"),
+                                onError: () =>
+                                  toast.error("Failed to update status"),
+                              },
+                            );
+                          }}
+                          data-ocid="admin.delivery.status.select"
+                        >
+                          <SelectTrigger className="h-8 text-xs w-[140px]">
+                            <SelectValue placeholder="Update status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="assigned" className="text-xs">
+                              Assigned
+                            </SelectItem>
+                            <SelectItem value="pickedUp" className="text-xs">
+                              Picked Up
+                            </SelectItem>
+                            <SelectItem
+                              value="outForDelivery"
+                              className="text-xs"
+                            >
+                              Out for Delivery
+                            </SelectItem>
+                            <SelectItem value="delivered" className="text-xs">
+                              Delivered
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                     </TableRow>
                   );

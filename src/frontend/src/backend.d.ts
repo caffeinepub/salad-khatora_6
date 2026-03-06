@@ -195,6 +195,7 @@ export interface backendInterface {
     toggleAvailability(id: bigint): Promise<void>;
     updateCoupon(coupon: Coupon): Promise<void>;
     updateDeliveryRider(rider: DeliveryRider): Promise<void>;
+    updateDeliveryStatus(orderId: bigint, deliveryStatus: string): Promise<void>;
     updateIngredient(item: IngredientItem): Promise<void>;
     updateMenuItem(item: MenuItem): Promise<void>;
     updateOrderStatus(orderId: bigint, status: OrderStatus): Promise<void>;

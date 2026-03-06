@@ -214,6 +214,7 @@ export interface _SERVICE {
   'toggleAvailability' : ActorMethod<[bigint], undefined>,
   'updateCoupon' : ActorMethod<[Coupon], undefined>,
   'updateDeliveryRider' : ActorMethod<[DeliveryRider], undefined>,
+  'updateDeliveryStatus' : ActorMethod<[bigint, string], undefined>,
   'updateIngredient' : ActorMethod<[IngredientItem], undefined>,
   'updateMenuItem' : ActorMethod<[MenuItem], undefined>,
   'updateOrderStatus' : ActorMethod<[bigint, OrderStatus], undefined>,

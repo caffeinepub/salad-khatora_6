@@ -422,10 +422,11 @@ export function useUpdateDeliveryStatus() {
     }: { orderId: bigint; status: string }) => {
       if (!actor) throw new Error("Not connected");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (actor as any).updateDeliveryStatus(orderId, status, null);
+      await (actor as any).updateDeliveryStatus(orderId, status);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allOrderDeliveries"] });
+      void queryClient.invalidateQueries({ queryKey: ["allOrders"] });
     },
   });
 }
