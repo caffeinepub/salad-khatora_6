@@ -20,6 +20,7 @@ import type {
   SubscriptionStatus,
 } from "../backend";
 import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
 // ─── Admin: Dashboard ─────────────────────────────────────────────────────────
 
@@ -652,12 +653,17 @@ export function useSaveAppSettings() {
 
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const principal = identity?.getPrincipal().toString() ?? "anonymous";
   return useQuery<boolean>({
-    queryKey: ["isCallerAdmin"],
+    queryKey: ["isCallerAdmin", principal],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      const result = await actor.isCallerAdmin();
+      console.log("Logged user isAdmin:", result, "principal:", principal);
+      return result;
     },
     enabled: !!actor && !isFetching,
+    staleTime: 0,
   });
 }
