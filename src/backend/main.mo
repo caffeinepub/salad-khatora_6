@@ -7,11 +7,11 @@ import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
-import Migration "migration";
+
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-(with migration = Migration.run)
+
 actor {
   /////////////////////
   // CONSTANTS       //

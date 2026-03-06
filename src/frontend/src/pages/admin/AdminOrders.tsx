@@ -29,6 +29,7 @@ import {
   useAllDeliveryRiders,
   useAllOrderDeliveries,
   useAllOrders,
+  useAppSettings,
   useAssignRiderToOrder,
   useUpdateOrderStatus,
 } from "@/hooks/useAdminQueries";
@@ -42,7 +43,8 @@ import {
   Truck,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type { FC } from "react";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
@@ -152,11 +154,18 @@ interface ReceiptOrder {
   status: OrderStatus;
 }
 
-interface ReceiptProps {
-  order: ReceiptOrder;
+interface BusinessDetails {
+  businessName: string;
+  gstNumber: string;
+  businessAddress: string;
 }
 
-function ReceiptContent({ order }: ReceiptProps) {
+interface ReceiptProps {
+  order: ReceiptOrder;
+  businessDetails?: BusinessDetails;
+}
+
+const ReceiptContent: FC<ReceiptProps> = ({ order, businessDetails }) => {
   const parsed = parseOrderNotes(order.notes);
   const customerName = parsed?.deliveryAddress?.fullName ?? "—";
   const customerPhone = parsed?.deliveryAddress?.mobile ?? "—";
@@ -178,6 +187,14 @@ function ReceiptContent({ order }: ReceiptProps) {
 
   const LINE = "--------------------------------";
 
+  const displayName = (
+    businessDetails?.businessName || "SALAD KHATORA"
+  ).toUpperCase();
+  const displayGst = businessDetails?.gstNumber || "36BZPPK8184L1Z9";
+  const addressLines = businessDetails?.businessAddress
+    ? businessDetails.businessAddress.split("\n").filter((l) => l.trim())
+    : ["Plot no 14, Road no 27, Phase 2", "Saket Colony, Hyderabad", "500062"];
+
   return (
     <div
       id="receipt-print-area"
@@ -185,16 +202,14 @@ function ReceiptContent({ order }: ReceiptProps) {
       style={{ maxWidth: "80mm" }}
     >
       {/* Header */}
-      <div className="text-center font-bold text-sm mb-0.5">SALAD KHATORA</div>
-      <div className="text-center text-[10px]">
-        Plot no 14, Road no 27, Phase 2
-      </div>
-      <div className="text-center text-[10px]">Saket Colony, Hyderabad</div>
-      <div className="text-center text-[10px]">500062</div>
+      <div className="text-center font-bold text-sm mb-0.5">{displayName}</div>
+      {addressLines.map((line, idx) => (
+        <div key={`addr-${idx}-${line}`} className="text-center text-[10px]">
+          {line}
+        </div>
+      ))}
       <div className="text-center text-[10px]">+91 7660005766</div>
-      <div className="text-center text-[10px] mt-0.5">
-        GST No: 36BZPPK8184L1Z9
-      </div>
+      <div className="text-center text-[10px] mt-0.5">GST No: {displayGst}</div>
 
       <div className="my-1">{LINE}</div>
 
@@ -285,14 +300,29 @@ function ReceiptContent({ order }: ReceiptProps) {
       </div>
     </div>
   );
-}
+};
 
 export default function AdminOrders() {
   const { data: orders, isLoading, refetch, isFetching } = useAllOrders();
   const { data: deliveries } = useAllOrderDeliveries();
   const { data: riders } = useAllDeliveryRiders();
+  const { data: settings } = useAppSettings();
   const updateStatus = useUpdateOrderStatus();
   const assignRider = useAssignRiderToOrder();
+
+  const [businessDetails, setBusinessDetails] = useState<{
+    gstNumber: string;
+    businessAddress: string;
+  }>(() => {
+    try {
+      const stored = localStorage.getItem("sk_business_details");
+      return stored
+        ? (JSON.parse(stored) as { gstNumber: string; businessAddress: string })
+        : { gstNumber: "", businessAddress: "" };
+    } catch {
+      return { gstNumber: "", businessAddress: "" };
+    }
+  });
 
   const [assignModal, setAssignModal] = useState<{
     open: boolean;
@@ -312,7 +342,66 @@ export default function AdminOrders() {
     orderId: bigint | null;
   }>({ open: false, orderId: null });
 
-  const printStyleRef = useRef<HTMLStyleElement | null>(null);
+  function printReceipt() {
+    const receiptContent =
+      document.getElementById("receiptContainer")?.innerHTML;
+    if (!receiptContent) return;
+
+    const printWindow = window.open("", "", "width=400,height=600");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt</title>
+          <style>
+            body {
+              font-family: monospace;
+              padding: 20px;
+              width: 300px;
+              font-size: 11px;
+              line-height: 1.4;
+              color: black;
+              background: white;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            th, td {
+              text-align: left;
+              padding: 4px 0;
+            }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            .font-semibold { font-weight: 600; }
+            .text-sm { font-size: 12px; }
+            .text-xs, .text-\\[10px\\] { font-size: 10px; }
+            .text-\\[12px\\] { font-size: 12px; }
+            .text-\\[11px\\] { font-size: 11px; }
+            .my-1 { margin-top: 4px; margin-bottom: 4px; }
+            .my-0\\.5 { margin-top: 2px; margin-bottom: 2px; }
+            .mt-1 { margin-top: 4px; }
+            .mt-0\\.5 { margin-top: 2px; }
+            .mb-1 { margin-bottom: 4px; }
+            .mb-0\\.5 { margin-bottom: 2px; }
+            .pl-2 { padding-left: 8px; }
+            .flex { display: flex; }
+            .justify-between { justify-content: space-between; }
+            .break-words { word-break: break-word; }
+            .text-gray-600 { color: #555; }
+          </style>
+        </head>
+        <body>
+          ${receiptContent}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
 
   const viewOrder = viewModal.orderId
     ? orders?.find((o) => o.id === viewModal.orderId)
@@ -322,41 +411,23 @@ export default function AdminOrders() {
     ? orders?.find((o) => o.id === receiptModal.orderId)
     : null;
 
-  // Inject print CSS when receipt modal opens, remove when it closes
+  // Refresh businessDetails from localStorage when receipt modal opens
   useEffect(() => {
     if (receiptModal.open) {
-      const style = document.createElement("style");
-      style.innerHTML = `
-        @media print {
-          body > * { display: none !important; }
-          #receipt-print-area {
-            display: block !important;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 80mm;
-            padding: 8px;
-            font-family: monospace;
-            font-size: 11px;
-            color: black;
-            background: white;
-          }
+      try {
+        const stored = localStorage.getItem("sk_business_details");
+        if (stored) {
+          setBusinessDetails(
+            JSON.parse(stored) as {
+              gstNumber: string;
+              businessAddress: string;
+            },
+          );
         }
-      `;
-      document.head.appendChild(style);
-      printStyleRef.current = style;
-    } else {
-      if (printStyleRef.current) {
-        document.head.removeChild(printStyleRef.current);
-        printStyleRef.current = null;
+      } catch {
+        // ignore
       }
     }
-    return () => {
-      if (printStyleRef.current) {
-        document.head.removeChild(printStyleRef.current);
-        printStyleRef.current = null;
-      }
-    };
   }, [receiptModal.open]);
 
   function getAssignedRiderName(orderId: bigint): string | null {
@@ -411,7 +482,7 @@ export default function AdminOrders() {
   }
 
   function handlePrint() {
-    window.print();
+    printReceipt();
   }
 
   return (
@@ -946,7 +1017,16 @@ export default function AdminOrders() {
             <>
               {/* Receipt preview area */}
               <div className="border border-dashed border-border rounded-lg p-4 bg-white overflow-auto max-h-[55vh]">
-                <ReceiptContent order={receiptOrder} />
+                <div id="receiptContainer">
+                  <ReceiptContent
+                    order={receiptOrder}
+                    businessDetails={{
+                      businessName: settings?.businessName || "SALAD KHATORA",
+                      gstNumber: businessDetails.gstNumber,
+                      businessAddress: businessDetails.businessAddress,
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Action buttons */}

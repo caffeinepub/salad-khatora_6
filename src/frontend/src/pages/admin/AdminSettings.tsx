@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppSettings, useSaveAppSettings } from "@/hooks/useAdminQueries";
 import {
   Building2,
@@ -71,6 +72,8 @@ export default function AdminSettings() {
   const [general, setGeneral] = useState({
     businessName: DEFAULT_SETTINGS.businessName,
     whatsappNumber: DEFAULT_SETTINGS.whatsappNumber,
+    gstNumber: "",
+    businessAddress: "",
   });
 
   const [tax, setTax] = useState({
@@ -88,14 +91,35 @@ export default function AdminSettings() {
   );
   const [newPincode, setNewPincode] = useState("");
 
+  // Load business details (gstNumber, businessAddress) from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("sk_business_details");
+      if (stored) {
+        const parsed = JSON.parse(stored) as {
+          gstNumber?: string;
+          businessAddress?: string;
+        };
+        setGeneral((prev) => ({
+          ...prev,
+          gstNumber: parsed.gstNumber ?? "",
+          businessAddress: parsed.businessAddress ?? "",
+        }));
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
   // Populate from loaded settings
   useEffect(() => {
     if (settings) {
-      setGeneral({
+      setGeneral((prev) => ({
+        ...prev,
         businessName: settings.businessName || DEFAULT_SETTINGS.businessName,
         whatsappNumber:
           settings.whatsappNumber || DEFAULT_SETTINGS.whatsappNumber,
-      });
+      }));
       setTax({
         taxEnabled: settings.taxEnabled ?? DEFAULT_SETTINGS.taxEnabled,
         taxPercentage: (settings.taxPercentage ?? 0).toString(),
@@ -120,9 +144,24 @@ export default function AdminSettings() {
     };
   }
 
+  const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+  const gstError =
+    general.gstNumber.length > 0 && !GST_REGEX.test(general.gstNumber)
+      ? "Invalid GST format. Example: 36BZPPK8184L1Z9"
+      : "";
+
   async function handleSaveGeneral() {
     try {
       await saveSettings.mutateAsync(buildFullSettings());
+      // Save GST number and business address to localStorage
+      localStorage.setItem(
+        "sk_business_details",
+        JSON.stringify({
+          gstNumber: general.gstNumber,
+          businessAddress: general.businessAddress,
+        }),
+      );
       toast.success("General settings saved");
     } catch {
       toast.error("Failed to save general settings");
@@ -273,10 +312,50 @@ export default function AdminSettings() {
                 data-ocid="admin-settings.whatsapp-number.input"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="gstNumber" className="text-sm font-medium">
+                GST Number
+              </Label>
+              <Input
+                id="gstNumber"
+                value={general.gstNumber}
+                onChange={(e) =>
+                  setGeneral((prev) => ({
+                    ...prev,
+                    gstNumber: e.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="36BZPPK8184L1Z9"
+                className={`border-border ${gstError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                data-ocid="admin-settings.gst-number.input"
+              />
+              {gstError && (
+                <p className="text-xs text-destructive mt-1">{gstError}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="businessAddress" className="text-sm font-medium">
+                Business Address
+              </Label>
+              <Textarea
+                id="businessAddress"
+                value={general.businessAddress}
+                onChange={(e) =>
+                  setGeneral((prev) => ({
+                    ...prev,
+                    businessAddress: e.target.value,
+                  }))
+                }
+                placeholder="Plot no 14, Road no 27, Phase 2, Saket Colony, Hyderabad, 500062"
+                rows={3}
+                className="border-border resize-none"
+                data-ocid="admin-settings.business-address.textarea"
+              />
+            </div>
             <div className="flex justify-end pt-2">
               <Button
                 onClick={handleSaveGeneral}
-                disabled={saveSettings.isPending}
+                disabled={saveSettings.isPending || !!gstError}
                 className="gap-2 bg-primary hover:bg-primary/90"
                 data-ocid="admin-settings.general.save_button"
               >
