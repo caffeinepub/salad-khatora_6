@@ -653,17 +653,26 @@ export function useSaveAppSettings() {
 
 export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { identity, isInitializing } = useInternetIdentity();
   const principal = identity?.getPrincipal().toString() ?? "anonymous";
   return useQuery<boolean>({
     queryKey: ["isCallerAdmin", principal],
     queryFn: async () => {
       if (!actor) return false;
+      // Only check admin status when we have a real authenticated identity
+      if (!identity || identity.getPrincipal().isAnonymous()) return false;
       const result = await actor.isCallerAdmin();
       console.log("Logged user isAdmin:", result, "principal:", principal);
       return result;
     },
-    enabled: !!actor && !isFetching,
+    enabled:
+      !!actor &&
+      !isFetching &&
+      !isInitializing &&
+      !!identity &&
+      !identity.getPrincipal().isAnonymous(),
     staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 }

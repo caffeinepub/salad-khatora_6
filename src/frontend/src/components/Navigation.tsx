@@ -26,6 +26,8 @@ export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const { data: isAdmin } = useIsCallerAdmin();
+  // Show Admin tab only when confirmed admin
+  const showAdmin = isAuthenticated && isAdmin === true;
 
   const navLinks = [
     { to: "/", label: "Home", ocid: "nav.home_link", authOnly: false },
@@ -86,7 +88,7 @@ export default function Navigation() {
                 {link.label}
               </Link>
             ))}
-            {isAuthenticated && isAdmin && (
+            {showAdmin && (
               <Link
                 to="/admin"
                 data-ocid="nav.admin.link"
@@ -196,7 +198,7 @@ export default function Navigation() {
                     {link.label}
                   </Link>
                 ))}
-                {isAuthenticated && isAdmin && (
+                {showAdmin && (
                   <Link
                     to="/admin"
                     data-ocid="nav.admin.link"
