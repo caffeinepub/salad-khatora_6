@@ -106,7 +106,7 @@ export default function LandingPage() {
                   asChild
                   size="lg"
                   variant="outline"
-                  className="border-white/50 text-white hover:bg-white/10 font-semibold gap-2"
+                  className="bg-white text-green-800 border border-green-800 hover:bg-green-800 hover:text-white font-semibold gap-2"
                   data-ocid="landing.get_started_button"
                 >
                   <Link to="/profile">
@@ -147,6 +147,13 @@ export default function LandingPage() {
                   src="/assets/generated/hero-salad.dim_1200x700.jpg"
                   alt="Fresh Salad Bowl"
                   className="relative rounded-3xl w-full object-cover aspect-[4/3] shadow-2xl ring-1 ring-white/20"
+                  onError={(e) => {
+                    const t = e.currentTarget;
+                    if (!t.src.includes("placeholder")) {
+                      t.src =
+                        "/assets/generated/placeholder-salad.dim_600x400.png";
+                    }
+                  }}
                 />
                 {/* Floating badge */}
                 <motion.div
@@ -335,6 +342,14 @@ export default function LandingPage() {
                     src={item.img}
                     alt={item.name}
                     className="w-full aspect-[3/2] object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      if (!t.src.includes("placeholder")) {
+                        t.src =
+                          "/assets/generated/placeholder-salad.dim_600x400.png";
+                      }
+                    }}
                   />
                   <Badge className="absolute top-3 left-3 bg-primary text-white border-0 text-xs">
                     {item.tag}

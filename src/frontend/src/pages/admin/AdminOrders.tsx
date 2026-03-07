@@ -117,14 +117,6 @@ function parseOrderNotes(notes?: string): ParsedOrderNotes | null {
   }
 }
 
-function formatPaymentLabel(method?: string): string {
-  if (!method) return "—";
-  if (method === "cod") return "Cash on Delivery";
-  if (method === "upi") return "UPI Payment";
-  if (method === "online") return "Online Payment";
-  return method;
-}
-
 // Pad a string to a fixed width (left-align)
 function padEnd(str: string, len: number): string {
   return str.length >= len
@@ -158,6 +150,7 @@ interface BusinessDetails {
   businessName: string;
   gstNumber: string;
   businessAddress: string;
+  phoneNumber: string;
 }
 
 interface ReceiptProps {
@@ -165,11 +158,27 @@ interface ReceiptProps {
   businessDetails?: BusinessDetails;
 }
 
+// Format a receipt row with left label and right value, total width 32 chars
+function receiptRow(label: string, value: string, totalWidth = 32): string {
+  const gap = totalWidth - label.length - value.length;
+  return gap > 0 ? label + " ".repeat(gap) + value : `${label} ${value}`;
+}
+
 const ReceiptContent: FC<ReceiptProps> = ({ order, businessDetails }) => {
   const parsed = parseOrderNotes(order.notes);
   const customerName = parsed?.deliveryAddress?.fullName ?? "—";
   const customerPhone = parsed?.deliveryAddress?.mobile ?? "—";
-  const paymentLabel = formatPaymentLabel(parsed?.paymentMethod);
+  const paymentMethod = parsed?.paymentMethod ?? "";
+
+  // Human-readable payment mode for receipt
+  const paymentMode =
+    paymentMethod === "cod"
+      ? "Cash"
+      : paymentMethod === "upi"
+        ? "UPI"
+        : paymentMethod === "online"
+          ? "Online"
+          : paymentMethod || "—";
 
   // Calculate financials
   const itemsSubtotal = order.items.reduce(
@@ -178,125 +187,204 @@ const ReceiptContent: FC<ReceiptProps> = ({ order, businessDetails }) => {
   );
   const subtotal = parsed?.subtotal ?? itemsSubtotal;
   const tax = parsed?.tax ?? 0;
+  const deliveryCharge = parsed?.deliveryCharge ?? 0;
+  const discount = parsed?.discount ?? 0;
   const totalAmount = order.totalAmount;
-  const discount = Math.max(
-    0,
-    subtotal + tax - totalAmount + (parsed?.deliveryCharge ?? 0),
-  );
-  const amtReceived = totalAmount;
 
   const LINE = "--------------------------------";
 
   const displayName = (
     businessDetails?.businessName || "SALAD KHATORA"
   ).toUpperCase();
-  const displayGst = businessDetails?.gstNumber || "36BZPPK8184L1Z9";
+  const displayGst = businessDetails?.gstNumber || "";
+  const rawPhone = businessDetails?.phoneNumber ?? "7660005766";
+  const displayPhone = rawPhone.startsWith("+91")
+    ? rawPhone
+    : `+91 ${rawPhone.replace(/^91/, "")}`;
   const addressLines = businessDetails?.businessAddress
     ? businessDetails.businessAddress.split("\n").filter((l) => l.trim())
-    : ["Plot no 14, Road no 27, Phase 2", "Saket Colony, Hyderabad", "500062"];
+    : [
+        "Plot No-14, Road No-27",
+        "Phase-2, Saket Colony",
+        "ECIL, Hyderabad 500062",
+      ];
+
+  // Date and time separately
+  const orderDate = new Date(Number(order.createdAt / 1_000_000n));
+  const dateStr = orderDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const timeStr = orderDate.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  // Item column widths: NAME=18, QTY=4, AMT=8 (total 32 with spaces)
+  const COL_NAME = 18;
+  const COL_QTY = 4;
+  const COL_AMT = 8;
+
+  function formatItemRow(name: string, qty: number, amt: number): string {
+    // Truncate name to COL_NAME chars
+    const namePart = padEnd(
+      name.length > COL_NAME ? `${name.slice(0, COL_NAME - 1)}.` : name,
+      COL_NAME,
+    );
+    const qtyPart = padStart(String(qty), COL_QTY);
+    const amtPart = padStart(String(amt), COL_AMT);
+    return namePart + qtyPart + amtPart;
+  }
 
   return (
     <div
-      id="receipt-print-area"
+      id="receiptContainer"
       className="font-mono text-[11px] leading-snug text-black bg-white w-full"
-      style={{ maxWidth: "80mm" }}
+      style={{ maxWidth: "80mm", fontFamily: "monospace" }}
     >
-      {/* Header */}
-      <div className="text-center font-bold text-sm mb-0.5">{displayName}</div>
-      {addressLines.map((line, idx) => (
-        <div key={`addr-${idx}-${line}`} className="text-center text-[10px]">
+      {/* ── HEADER ── */}
+      <div
+        style={{
+          textAlign: "center",
+          fontWeight: "bold",
+          fontSize: "13px",
+          marginBottom: "2px",
+        }}
+      >
+        {displayName}
+      </div>
+      {addressLines.map((line) => (
+        <div key={line} style={{ textAlign: "center", fontSize: "10px" }}>
           {line}
         </div>
       ))}
-      <div className="text-center text-[10px]">+91 7660005766</div>
-      <div className="text-center text-[10px] mt-0.5">GST No: {displayGst}</div>
+      <div style={{ textAlign: "center", fontSize: "10px" }}>
+        Phone: {displayPhone}
+      </div>
+      {displayGst && (
+        <div style={{ textAlign: "center", fontSize: "10px" }}>
+          GST: {displayGst}
+        </div>
+      )}
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Order info */}
+      {/* ── ORDER DETAILS ── */}
       <div>Order ID: #{order.id.toString()}</div>
-      <div>Date : {formatDateTime(order.createdAt)}</div>
+      <div>Date : {dateStr}</div>
+      <div>Time : {timeStr}</div>
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Customer */}
+      {/* ── CUSTOMER ── */}
       <div>Customer: {customerName}</div>
       <div>Phone : {customerPhone}</div>
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Items header */}
-      <div className="flex justify-between font-semibold">
-        <span>{padEnd("ITEM", 20)}</span>
-        <span>{padStart("QTY", 4)}</span>
-        <span>{padStart("AMT", 8)}</span>
+      {/* ── ITEMS HEADER ── */}
+      <div style={{ fontWeight: "bold" }}>
+        {padEnd("ITEM", COL_NAME)}
+        {padStart("QTY", COL_QTY)}
+        {padStart("AMT", COL_AMT)}
       </div>
-      <div className="my-0.5">{LINE}</div>
+      <div style={{ margin: "2px 0" }}>{LINE}</div>
 
-      {/* Items list */}
+      {/* ── ITEMS LIST ── */}
       {order.items.map((item) => {
-        const itemName =
+        // Resolve item name — prefer stored itemName, fall back gracefully
+        const rawName =
           Array.isArray(item.itemName) && item.itemName.length > 0
             ? item.itemName[0]
-            : typeof item.itemName === "string" && item.itemName
-              ? item.itemName
-              : `Item #${item.menuItemId.toString()}`;
+            : typeof item.itemName === "string" && item.itemName.trim()
+              ? item.itemName.trim()
+              : null;
         const qty = Number(item.quantity);
-        const amt = item.unitPrice * qty;
+        const amt = Math.round(item.unitPrice * qty);
 
-        return (
-          <div key={item.menuItemId.toString()} className="mb-1">
-            {/* Item name wraps if long */}
-            <div className="break-words">{itemName}</div>
-            <div className="flex justify-between pl-2">
-              <span className="text-[10px] text-gray-600">Qty: {qty}</span>
-              <span>₹{amt.toLocaleString("en-IN")}</span>
+        if (rawName) {
+          // Name fits in one line — use aligned columns
+          if (rawName.length <= COL_NAME) {
+            return (
+              <div
+                key={item.menuItemId.toString()}
+                style={{ whiteSpace: "pre" }}
+              >
+                {formatItemRow(rawName, qty, amt)}
+              </div>
+            );
+          }
+          // Long name — print name first, then qty/amt on next line indented
+          return (
+            <div
+              key={item.menuItemId.toString()}
+              style={{ marginBottom: "2px" }}
+            >
+              <div>{rawName}</div>
+              <div style={{ whiteSpace: "pre" }}>
+                {"  "}
+                {padEnd("", COL_NAME - 2)}
+                {padStart(String(qty), COL_QTY)}
+                {padStart(String(amt), COL_AMT)}
+              </div>
             </div>
+          );
+        }
+
+        // No name stored — show "Unknown Item" with alignment
+        return (
+          <div key={item.menuItemId.toString()} style={{ whiteSpace: "pre" }}>
+            {formatItemRow("Unknown Item", qty, amt)}
           </div>
         );
       })}
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Subtotal / Discount / Tax */}
-      <div className="flex justify-between">
-        <span>{padEnd("Subtotal", 18)}</span>
-        <span>₹{subtotal.toLocaleString("en-IN")}</span>
+      {/* ── TOTALS ── */}
+      <div style={{ whiteSpace: "pre" }}>
+        {receiptRow("Subtotal", `Rs ${subtotal}`)}
       </div>
       {discount > 0 && (
-        <div className="flex justify-between">
-          <span>{padEnd("Discount", 18)}</span>
-          <span>-₹{discount.toLocaleString("en-IN")}</span>
+        <div style={{ whiteSpace: "pre" }}>
+          {receiptRow("Discount", `-Rs ${discount}`)}
         </div>
       )}
-      <div className="flex justify-between">
-        <span>{padEnd("Tax (GST)", 18)}</span>
-        <span>₹{tax.toLocaleString("en-IN")}</span>
+      {tax > 0 && (
+        <div style={{ whiteSpace: "pre" }}>
+          {receiptRow("GST", `Rs ${tax}`)}
+        </div>
+      )}
+      {deliveryCharge > 0 && (
+        <div style={{ whiteSpace: "pre" }}>
+          {receiptRow("Delivery Charge", `Rs ${deliveryCharge}`)}
+        </div>
+      )}
+
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
+
+      {/* ── GRAND TOTAL ── */}
+      <div style={{ fontWeight: "bold", fontSize: "12px", whiteSpace: "pre" }}>
+        {receiptRow("TOTAL", `Rs ${totalAmount}`)}
       </div>
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Total */}
-      <div className="flex justify-between font-bold text-[12px]">
-        <span>{padEnd("TOTAL", 18)}</span>
-        <span>₹{totalAmount.toLocaleString("en-IN")}</span>
+      {/* ── PAYMENT ── */}
+      <div style={{ whiteSpace: "pre" }}>
+        {receiptRow("Amt Received", `Rs ${totalAmount}`)}
+      </div>
+      <div style={{ whiteSpace: "pre" }}>
+        {receiptRow("Payment Mode", paymentMode)}
       </div>
 
-      <div className="my-1">{LINE}</div>
+      <div style={{ margin: "4px 0" }}>{LINE}</div>
 
-      {/* Amount received */}
-      <div className="flex justify-between">
-        <span>{padEnd("Amt Received", 18)}</span>
-        <span>₹{amtReceived.toLocaleString("en-IN")}</span>
-      </div>
-
-      <div className="my-1 text-[10px]" />
-      <div>Payment: {paymentLabel}</div>
-
-      <div className="my-1">{LINE}</div>
-
-      <div className="text-center font-semibold mt-1">
-        Thank You, Visit Again!
+      {/* ── FOOTER ── */}
+      <div style={{ textAlign: "center", fontWeight: "600", marginTop: "4px" }}>
+        Thank You! Visit Again!
       </div>
     </div>
   );
@@ -329,64 +417,50 @@ export default function AdminOrders() {
   }>({ open: false, orderId: null });
 
   function printReceipt() {
-    const receiptContent =
-      document.getElementById("receiptContainer")?.innerHTML;
-    if (!receiptContent) return;
+    const receiptEl = document.getElementById("receiptContainer");
+    if (!receiptEl) return;
+    const receiptContent = receiptEl.innerHTML;
 
-    const printWindow = window.open("", "", "width=400,height=600");
+    const printWindow = window.open("", "", "width=320,height=650");
     if (!printWindow) return;
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Receipt</title>
-          <style>
-            body {
-              font-family: monospace;
-              padding: 20px;
-              width: 300px;
-              font-size: 11px;
-              line-height: 1.4;
-              color: black;
-              background: white;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-            }
-            th, td {
-              text-align: left;
-              padding: 4px 0;
-            }
-            .text-center { text-align: center; }
-            .font-bold { font-weight: bold; }
-            .font-semibold { font-weight: 600; }
-            .text-sm { font-size: 12px; }
-            .text-xs, .text-\\[10px\\] { font-size: 10px; }
-            .text-\\[12px\\] { font-size: 12px; }
-            .text-\\[11px\\] { font-size: 11px; }
-            .my-1 { margin-top: 4px; margin-bottom: 4px; }
-            .my-0\\.5 { margin-top: 2px; margin-bottom: 2px; }
-            .mt-1 { margin-top: 4px; }
-            .mt-0\\.5 { margin-top: 2px; }
-            .mb-1 { margin-bottom: 4px; }
-            .mb-0\\.5 { margin-bottom: 2px; }
-            .pl-2 { padding-left: 8px; }
-            .flex { display: flex; }
-            .justify-between { justify-content: space-between; }
-            .break-words { word-break: break-word; }
-            .text-gray-600 { color: #555; }
-          </style>
-        </head>
-        <body>
-          ${receiptContent}
-        </body>
-      </html>
-    `);
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Receipt</title>
+    <style>
+      @page {
+        size: 80mm auto;
+        margin: 4mm 3mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 11px;
+        line-height: 1.45;
+        color: #000;
+        background: #fff;
+        width: 74mm;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    ${receiptContent}
+  </body>
+</html>`);
 
     printWindow.document.close();
     printWindow.focus();
-    printWindow.print();
+    // Small delay to ensure content is fully rendered before printing
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   }
 
   const viewOrder = viewModal.orderId
@@ -991,6 +1065,7 @@ export default function AdminOrders() {
                       businessName: settings?.businessName || "SALAD KHATORA",
                       gstNumber: settings?.gstNumber ?? "",
                       businessAddress: settings?.businessAddress ?? "",
+                      phoneNumber: settings?.whatsappNumber ?? "7660005766",
                     }}
                   />
                 </div>

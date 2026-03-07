@@ -90,6 +90,21 @@ const EMPTY_FORM: MenuForm = {
   available: true,
 };
 
+const PLACEHOLDER_IMAGE = "/assets/generated/placeholder-salad.dim_600x400.png";
+
+// Safely unwrap ICP Option<string> OR plain string image URL
+function resolveImageUrl(raw: unknown): string {
+  if (!raw) return "";
+  if (typeof raw === "object" && raw !== null) {
+    const opt = raw as { __kind__?: string; value?: unknown };
+    if (opt.__kind__ === "Some" && typeof opt.value === "string")
+      return opt.value;
+    if (opt.__kind__ === "None") return "";
+  }
+  if (typeof raw === "string") return raw;
+  return "";
+}
+
 function itemToForm(item: MenuItem): MenuForm {
   return {
     name: item.name,
@@ -98,7 +113,7 @@ function itemToForm(item: MenuItem): MenuForm {
     price: item.price.toString(),
     calories: item.calories.toString(),
     protein: item.protein.toString(),
-    imageUrl: item.imageUrl ?? "",
+    imageUrl: resolveImageUrl(item.imageUrl),
     available: item.available,
   };
 }
@@ -353,11 +368,16 @@ export default function AdminMenu() {
                 >
                   {/* Image */}
                   <TableCell>
-                    {item.imageUrl ? (
+                    {resolveImageUrl(item.imageUrl) ? (
                       <img
-                        src={item.imageUrl}
+                        src={resolveImageUrl(item.imageUrl)}
                         alt={item.name}
                         className="w-10 h-10 rounded-lg object-cover border border-border"
+                        onError={(e) => {
+                          const t = e.currentTarget;
+                          t.onerror = null;
+                          t.src = PLACEHOLDER_IMAGE;
+                        }}
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center border border-border">
@@ -612,7 +632,9 @@ export default function AdminMenu() {
                   alt="Preview"
                   className="mt-2 w-20 h-20 rounded-lg object-cover border border-border"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
+                    const t = e.currentTarget;
+                    t.onerror = null;
+                    t.src = PLACEHOLDER_IMAGE;
                   }}
                 />
               )}

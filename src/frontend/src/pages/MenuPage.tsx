@@ -135,6 +135,8 @@ const FALLBACK_ITEMS: MenuItem[] = [
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ] as any;
 
+const PLACEHOLDER_IMAGE = "/assets/generated/placeholder-salad.dim_600x400.png";
+
 const CATEGORY_IMAGES: Record<string, string> = {
   Vegetarian: "/assets/generated/salad-garden.dim_600x400.jpg",
   Classic: "/assets/generated/salad-greek.dim_600x400.jpg",
@@ -143,6 +145,20 @@ const CATEGORY_IMAGES: Record<string, string> = {
   Caesar: "/assets/generated/salad-caesar.dim_600x400.jpg",
   Seasonal: "/assets/generated/salad-garden.dim_600x400.jpg",
 };
+
+// Safely unwrap ICP Option<string> OR plain string image URL
+function resolveImageUrl(raw: unknown): string {
+  if (!raw) return "";
+  // ICP Option type: { __kind__: "Some", value: "..." }
+  if (typeof raw === "object" && raw !== null) {
+    const opt = raw as { __kind__?: string; value?: unknown };
+    if (opt.__kind__ === "Some" && typeof opt.value === "string")
+      return opt.value;
+    if (opt.__kind__ === "None") return "";
+  }
+  if (typeof raw === "string") return raw;
+  return "";
+}
 
 function MenuItemCard({
   item,
@@ -157,7 +173,8 @@ function MenuItemCard({
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyItem = item as any;
-  const itemImage: string = anyItem.imageUrl ?? anyItem.image ?? "";
+  const rawImageUrl = anyItem.imageUrl ?? anyItem.image;
+  const itemImage: string = resolveImageUrl(rawImageUrl);
   const itemProtein: number = Number(anyItem.protein ?? 0);
   const itemCalories: number = Number(anyItem.calories ?? 0);
   const itemPrice: number = Number(anyItem.price ?? 0);
@@ -165,10 +182,9 @@ function MenuItemCard({
     anyItem.isActive !== false && anyItem.available !== false;
 
   const imgSrc =
-    itemImage && itemImage.length > 0
+    itemImage.length > 0
       ? itemImage
-      : (CATEGORY_IMAGES[item.category] ??
-        "/assets/generated/salad-garden.dim_600x400.jpg");
+      : (CATEGORY_IMAGES[item.category] ?? PLACEHOLDER_IMAGE);
   const categoryClass =
     CATEGORY_COLORS[item.category] ??
     "bg-gray-100 text-gray-700 border-gray-200";
@@ -187,6 +203,12 @@ function MenuItemCard({
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (target.src !== window.location.origin + PLACEHOLDER_IMAGE) {
+              target.src = PLACEHOLDER_IMAGE;
+            }
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         <span
