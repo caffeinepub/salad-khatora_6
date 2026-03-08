@@ -1,8 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTopOrderedMenuItems } from "@/hooks/useQueries";
+import { getOrderFrequency } from "@/utils/orderFrequency";
 import { Link } from "@tanstack/react-router";
 import {
   Clock,
+  Flame,
   Heart,
   Leaf,
   Shield,
@@ -11,6 +15,19 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
+
+// Safely unwrap ICP Option<string> OR plain string image URL
+function resolveImageUrl(raw: unknown): string {
+  if (!raw) return "";
+  if (typeof raw === "object" && raw !== null) {
+    const opt = raw as { __kind__?: string; value?: unknown };
+    if (opt.__kind__ === "Some" && typeof opt.value === "string")
+      return opt.value;
+    if (opt.__kind__ === "None") return "";
+  }
+  if (typeof raw === "string") return raw;
+  return "";
+}
 
 const features = [
   {
@@ -62,6 +79,10 @@ const testimonials = [
 ];
 
 export default function LandingPage() {
+  const { data: topItems, isLoading: topItemsLoading } =
+    useTopOrderedMenuItems(3);
+  const freq = getOrderFrequency();
+
   return (
     <main className="flex flex-col">
       {/* Hero Section */}
@@ -305,73 +326,113 @@ export default function LandingPage() {
             </Button>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                img: "/assets/generated/salad-garden.dim_600x400.jpg",
-                name: "Garden Fresh Bowl",
-                price: "₹450",
-                cal: "285 kcal",
-                tag: "Vegetarian",
-              },
-              {
-                img: "/assets/generated/salad-greek.dim_600x400.jpg",
-                name: "Mediterranean Greek",
-                price: "₹550",
-                cal: "320 kcal",
-                tag: "Classic",
-              },
-              {
-                img: "/assets/generated/salad-chicken.dim_600x400.jpg",
-                name: "Grilled Chicken Bowl",
-                price: "₹750",
-                cal: "420 kcal",
-                tag: "Protein",
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={item.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-2xl overflow-hidden border border-border card-hover group"
+          <div
+            className="grid md:grid-cols-3 gap-6"
+            data-ocid="landing.fresh_picks.list"
+          >
+            {topItemsLoading ? (
+              // Loading skeletons — use stable string keys, not array index
+              (["sk-a", "sk-b", "sk-c"] as const).map((skKey) => (
+                <div
+                  key={skKey}
+                  className="bg-white rounded-2xl overflow-hidden border border-border"
+                >
+                  <Skeleton className="w-full aspect-[3/2]" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton className="h-5 w-3/4" />
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : topItems.length === 0 ? (
+              <div
+                className="md:col-span-3 text-center py-12 rounded-2xl border border-dashed border-border bg-muted/20"
+                data-ocid="landing.fresh_picks.empty_state"
               >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={item.img}
-                    alt={item.name}
-                    className="w-full aspect-[3/2] object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) => {
-                      const t = e.currentTarget;
-                      if (!t.src.includes("placeholder")) {
-                        t.src =
-                          "/assets/generated/placeholder-salad.dim_600x400.png";
-                      }
-                    }}
-                  />
-                  <Badge className="absolute top-3 left-3 bg-primary text-white border-0 text-xs">
-                    {item.tag}
-                  </Badge>
-                </div>
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-display font-bold text-lg text-foreground">
-                      {item.name}
-                    </h3>
-                  </div>
-                  <div className="flex justify-between items-center mt-3">
-                    <span className="text-primary font-bold text-xl font-display">
-                      {item.price}
-                    </span>
-                    <span className="text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
-                      {item.cal}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                <Leaf className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Menu items coming soon — check back shortly!
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 border-primary text-primary hover:bg-primary hover:text-white"
+                >
+                  <Link to="/menu">Browse Menu</Link>
+                </Button>
+              </div>
+            ) : (
+              topItems.map((item, i) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const anyItem = item as any;
+                const rawImageUrl = anyItem.imageUrl ?? anyItem.image;
+                const imgSrc =
+                  resolveImageUrl(rawImageUrl) ||
+                  "/assets/generated/placeholder-salad.dim_600x400.png";
+                const itemPrice = Number(anyItem.price ?? 0);
+                const itemCalories = Number(anyItem.calories ?? 0);
+                const itemCategory: string = anyItem.category ?? "Fresh";
+                const orderCount = freq[item.id.toString()] ?? 0;
+
+                return (
+                  <motion.div
+                    key={item.id.toString()}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    data-ocid={`landing.fresh_picks.item.${i + 1}`}
+                  >
+                    <Link
+                      to="/menu"
+                      className="block bg-white rounded-2xl overflow-hidden border border-border card-hover group"
+                    >
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={imgSrc}
+                          alt={item.name}
+                          className="w-full aspect-[3/2] object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                          onError={(e) => {
+                            const t = e.currentTarget;
+                            if (!t.src.includes("placeholder")) {
+                              t.src =
+                                "/assets/generated/placeholder-salad.dim_600x400.png";
+                            }
+                          }}
+                        />
+                        <Badge className="absolute top-3 left-3 bg-primary text-white border-0 text-xs capitalize">
+                          {itemCategory}
+                        </Badge>
+                        {orderCount > 0 && (
+                          <div className="absolute top-3 right-3 flex items-center gap-1 bg-amber-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm">
+                            <Flame className="h-3 w-3" />
+                            Popular
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-5">
+                        <h3 className="font-display font-bold text-lg text-foreground mb-1 line-clamp-1">
+                          {item.name}
+                        </h3>
+                        <div className="flex justify-between items-center mt-3">
+                          <span className="text-primary font-bold text-xl font-display">
+                            ₹{itemPrice.toFixed(0)}
+                          </span>
+                          <span className="text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
+                            {itemCalories} kcal
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </div>
       </section>

@@ -1,45 +1,35 @@
 # Salad Khatora
 
 ## Current State
+The "Fresh Picks Today" section on the home page (`LandingPage.tsx`) is fully hardcoded with three static salad items (Garden Fresh Bowl, Mediterranean Greek, Grilled Chicken Bowl) with placeholder images and fixed prices. It does not connect to the backend at all.
 
-Full-stack food ordering app with customer-facing pages (menu, cart, checkout, orders, subscriptions, profile) and a complete Admin Panel (dashboard, orders, customers, subscriptions, inventory, coupons, delivery, menu management, settings).
+The backend has:
+- `getAllMenuItems()` — returns all menu items
+- `getAllOrders()` — admin-only; returns all orders with `items: OrderItem[]`
+- Each `OrderItem` has `menuItemId`, `quantity`, `unitPrice`
 
-Authentication uses Internet Identity via `_initializeAccessControlWithSecret`. The backend `access-control.mo` `getUserRole()` currently calls `Runtime.trap("User is not registered")` for any principal not yet in the `userRoles` map -- this causes all admin queries to fail with a canister trap when the admin checks permission before being registered, resulting in data not loading and not saving in the admin panel.
-
-`AppSettings` does not include `gstNumber` and `businessAddress` -- those are currently stored only in localStorage as a workaround.
+There is no public query to get top-ordered items by frequency.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `gstNumber: Text` and `businessAddress: Text` fields to `AppSettings` type in the backend, stored and retrieved like all other settings fields.
+- New backend query `getTopOrderedMenuItems(limit: Nat)` — public (no auth), iterates all orders, counts occurrences of each `menuItemId` across all order items, joins with menu items, sorts by count descending, returns top N active items
+- New frontend hook `useTopOrderedMenuItems(limit: number)` in `useQueries.ts`
+- Fallback logic: if no orders exist (count = 0 for all items), return the first N active menu items instead
 
 ### Modify
-- `getUserRole()` in `access-control.mo`: return `#guest` instead of trapping when a principal is not found in the `userRoles` map. This makes `hasPermission()` return `false` gracefully for unregistered users instead of trapping, fixing all admin data load/save failures.
-- `AppSettings` type: add `gstNumber` and `businessAddress` fields (both `Text`, default empty string).
-- `appSettings` default value: include `gstNumber = ""` and `businessAddress = ""`.
-- `getAppSettings` and `saveAppSettings`: work with the new fields automatically.
-- Frontend `AdminSettings.tsx`: read/write `gstNumber` and `businessAddress` from/to backend instead of localStorage.
-- Frontend `AdminOrders.tsx` (receipt): read `gstNumber` and `businessAddress` from backend settings instead of localStorage.
-- Frontend `useAdminQueries.ts`: no change needed; the `saveAppSettings`/`getAppSettings` hooks already use the `AppSettings` type.
+- `LandingPage.tsx` — replace the hardcoded "Fresh Picks Today" grid with a dynamic component that:
+  - Calls `useTopOrderedMenuItems(3)`
+  - Shows a loading skeleton while fetching
+  - Renders real item name, price (₹), calories, category badge, and imageUrl (with fallback)
+  - Shows an "Order Count" or popularity indicator (e.g. "🔥 X orders")
+  - Links each card to `/menu`
 
 ### Remove
-- localStorage-based `sk_business_details` workaround in `AdminSettings.tsx` (replaced by proper backend storage).
+- The three hardcoded static item objects from the Fresh Picks Today grid in `LandingPage.tsx`
 
 ## Implementation Plan
-
-1. Regenerate Motoko backend with:
-   - `getUserRole` returning `#guest` for unregistered principals (no trap)
-   - `AppSettings` extended with `gstNumber: Text` and `businessAddress: Text`
-   - Default `appSettings` includes `gstNumber = ""` and `businessAddress = ""`
-   - All existing types, functions, logic unchanged
-
-2. Update `backend.d.ts` to add `gstNumber` and `businessAddress` to `AppSettings` interface.
-
-3. Update `AdminSettings.tsx`:
-   - Remove localStorage `sk_business_details` load/save
-   - Read `gstNumber` and `businessAddress` from `settings` (backend)
-   - Include them in `buildFullSettings()` return value
-
-4. Update `AdminOrders.tsx` (receipt print):
-   - Read `gstNumber` and `businessAddress` from `useAppSettings()` hook
-   - Remove localStorage fallback for those fields
+1. Add `getTopOrderedMenuItems(limit: Nat)` public query to `main.mo`
+2. Regenerate `backend.d.ts` is not needed — just add to existing interface manually since the signature is straightforward: returns `Array<MenuItem>`
+3. Add `useTopOrderedMenuItems` hook to `useQueries.ts`
+4. Update `LandingPage.tsx` Fresh Picks section to use the hook, with loading skeleton, real data rendering, and fallback

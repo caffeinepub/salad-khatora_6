@@ -21,6 +21,7 @@ import {
   useMyProfile,
   usePlaceOrder,
 } from "@/hooks/useQueries";
+import { recordOrderFrequency } from "@/utils/orderFrequency";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Banknote,
@@ -503,6 +504,13 @@ export default function CheckoutPage() {
         totalAmount: Math.max(0, finalTotal),
         notes: addressNote,
       });
+      // Record order frequency for "Fresh Picks Today" feature (client-side)
+      recordOrderFrequency(
+        items.map((item) => ({
+          menuItemId: item.menuItemId,
+          quantity: BigInt(item.quantity),
+        })),
+      );
       clearCart();
       void navigate({
         to: "/order-confirmation",

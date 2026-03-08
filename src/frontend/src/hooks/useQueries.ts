@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type {
   AppSettings,
   MenuItem,
@@ -8,6 +9,7 @@ import type {
   UserProfile,
 } from "../backend";
 import type { SubscriptionPlan } from "../backend";
+import { getOrderFrequency } from "../utils/orderFrequency";
 import { useActor } from "./useActor";
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
@@ -181,4 +183,35 @@ export function useCallerRole() {
     },
     enabled: !!actor && !isFetching,
   });
+}
+
+// ─── Top Ordered Menu Items ───────────────────────────────────────────────────
+
+/**
+ * Returns up to `limit` active menu items sorted by order frequency (descending).
+ * Falls back to featured/first items if no order history exists.
+ */
+export function useTopOrderedMenuItems(limit: number) {
+  const menuQuery = useAllMenuItems();
+
+  const topItems = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawItems = (menuQuery.data ?? []) as any[];
+    const activeItems = rawItems.filter(
+      (item) => item.isActive !== false && item.available !== false,
+    ) as MenuItem[];
+
+    const freq = getOrderFrequency();
+
+    const sorted = [...activeItems].sort((a, b) => {
+      const countA = freq[a.id.toString()] ?? 0;
+      const countB = freq[b.id.toString()] ?? 0;
+      if (countB !== countA) return countB - countA;
+      return Number(a.id) - Number(b.id);
+    });
+
+    return sorted.slice(0, limit);
+  }, [menuQuery.data, limit]);
+
+  return { ...menuQuery, data: topItems };
 }
