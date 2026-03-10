@@ -1,4 +1,5 @@
 import type { MenuItem, SaladIngredient } from "@/backend";
+import { ExternalBlob } from "@/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -50,16 +52,19 @@ import {
   useUpdateMenuItem,
 } from "@/hooks/useAdminQueries";
 import {
+  ImageIcon,
   Leaf,
   Loader2,
   Pencil,
   Plus,
   Power,
   Trash2,
+  Upload,
   UtensilsCrossed,
+  X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type MenuForm = {
@@ -91,6 +96,44 @@ const EMPTY_FORM: MenuForm = {
 };
 
 const PLACEHOLDER_IMAGE = "/assets/generated/placeholder-salad.dim_600x400.png";
+
+// ─── Canvas resize/compress helper ───────────────────────────────────────────
+async function resizeAndCompressImage(file: File): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxWidth = 800;
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("Canvas toBlob failed"));
+          blob
+            .arrayBuffer()
+            .then((buf) => resolve(new Uint8Array(buf)))
+            .catch(reject);
+        },
+        "image/jpeg",
+        0.8,
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
+  });
+}
 
 // Safely unwrap ICP Option<string> OR plain string image URL
 function resolveImageUrl(raw: unknown): string {
@@ -133,6 +176,14 @@ export default function AdminMenu() {
   const [form, setForm] = useState<MenuForm>(EMPTY_FORM);
   const [ingredientRows, setIngredientRows] = useState<IngredientRow[]>([]);
 
+  // Image upload state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>("");
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
+  const [imageError, setImageError] = useState<string>("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Fetch existing salad ingredients when editing
   const { data: existingSaladIngredients, isLoading: isLoadingIngredients } =
     useGetSaladIngredients(editingItem?.id ?? null);
@@ -154,6 +205,11 @@ export default function AdminMenu() {
     setEditingItem(null);
     setForm(EMPTY_FORM);
     setIngredientRows([]);
+    setImageFile(null);
+    setImagePreviewUrl("");
+    setImageUploadProgress(0);
+    setImageError("");
+    setIsUploadingImage(false);
     setIsFormOpen(true);
   }
 
@@ -161,6 +217,11 @@ export default function AdminMenu() {
     setEditingItem(item);
     setForm(itemToForm(item));
     setIngredientRows([]); // will be populated by useEffect once data loads
+    setImageFile(null);
+    setImagePreviewUrl(resolveImageUrl(item.imageUrl));
+    setImageUploadProgress(0);
+    setImageError("");
+    setIsUploadingImage(false);
     setIsFormOpen(true);
   }
 
@@ -168,6 +229,44 @@ export default function AdminMenu() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError("");
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Only JPG, PNG, and WEBP images are allowed.");
+      return;
+    }
+
+    // Validate file size (2MB max)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setImageError("Image must be smaller than 2MB.");
+      return;
+    }
+
+    // Generate preview
+    const previewUrl = URL.createObjectURL(file);
+    setImageFile(file);
+    setImagePreviewUrl(previewUrl);
+    setImageUploadProgress(0);
+  }
+
+  function handleClearImage() {
+    setImageFile(null);
+    setImagePreviewUrl("");
+    setImageError("");
+    setImageUploadProgress(0);
+    setForm((prev) => ({ ...prev, imageUrl: "" }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   }
 
   function addIngredientRow() {
@@ -194,6 +293,29 @@ export default function AdminMenu() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // Upload image if a new file was selected
+    let finalImageUrl = form.imageUrl;
+    if (imageFile) {
+      setIsUploadingImage(true);
+      setImageUploadProgress(0);
+      try {
+        const compressed = await resizeAndCompressImage(imageFile);
+        const blob = ExternalBlob.fromBytes(
+          compressed as Uint8Array<ArrayBuffer>,
+        ).withUploadProgress((pct: number) => {
+          setImageUploadProgress(Math.round(pct * 100));
+        });
+        await blob.getBytes();
+        finalImageUrl = blob.getDirectURL();
+        setImageUploadProgress(100);
+      } catch (_err) {
+        setIsUploadingImage(false);
+        toast.error("Image upload failed. Please try again.");
+        return;
+      }
+      setIsUploadingImage(false);
+    }
+
     const menuItem: MenuItem = {
       id: editingItem ? editingItem.id : BigInt(Date.now()),
       name: form.name.trim(),
@@ -202,7 +324,7 @@ export default function AdminMenu() {
       price: Number(form.price),
       calories: BigInt(Math.round(Number(form.calories))),
       protein: BigInt(Math.round(Number(form.protein))),
-      imageUrl: form.imageUrl.trim() || undefined,
+      imageUrl: finalImageUrl.trim() || undefined,
       available: form.available,
     };
 
@@ -275,7 +397,8 @@ export default function AdminMenu() {
   const isPending =
     addMenuItem.isPending ||
     updateMenuItem.isPending ||
-    setSaladIngredients.isPending;
+    setSaladIngredients.isPending ||
+    isUploadingImage;
 
   return (
     <div className="p-6 max-w-7xl mx-auto" data-ocid="admin.menu.page">
@@ -613,30 +736,104 @@ export default function AdminMenu() {
               />
             </div>
 
-            {/* Image URL */}
+            {/* Image Upload */}
             <div className="space-y-2">
-              <Label htmlFor="imageUrl" className="text-sm font-medium">
-                Image URL
-              </Label>
-              <Input
-                id="imageUrl"
-                name="imageUrl"
-                value={form.imageUrl}
-                onChange={handleFieldChange}
-                placeholder="https://... or paste an image URL"
-                data-ocid="admin.menu.image_url.input"
+              <Label className="text-sm font-medium">Item Image</Label>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleImageFileChange}
+                data-ocid="admin.menu.image.upload_button"
               />
-              {form.imageUrl && (
-                <img
-                  src={form.imageUrl}
-                  alt="Preview"
-                  className="mt-2 w-20 h-20 rounded-lg object-cover border border-border"
-                  onError={(e) => {
-                    const t = e.currentTarget;
-                    t.onerror = null;
-                    t.src = PLACEHOLDER_IMAGE;
-                  }}
-                />
+
+              {imagePreviewUrl ? (
+                /* Preview state — show existing or newly selected image */
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Preview of selected menu item"
+                    className="w-20 h-20 rounded-lg object-cover border border-border"
+                    loading="lazy"
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      t.onerror = null;
+                      t.src = PLACEHOLDER_IMAGE;
+                    }}
+                  />
+                  {/* Replace / Remove controls */}
+                  <div className="absolute -top-2 -right-2 flex gap-1">
+                    <button
+                      type="button"
+                      title="Replace image"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary/90 transition-colors"
+                      data-ocid="admin.menu.image.upload_button"
+                    >
+                      <Upload className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Remove image"
+                      onClick={handleClearImage}
+                      className="h-6 w-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-sm hover:bg-destructive/90 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  {imageFile && (
+                    <p className="text-xs text-muted-foreground mt-1.5 truncate max-w-[80px]">
+                      {imageFile.name}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                /* Upload zone — click or drag to select */
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-6 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 group"
+                  data-ocid="admin.menu.image.dropzone"
+                >
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                      Click to upload image
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5">
+                      JPG, PNG, WEBP · Max 2MB
+                    </p>
+                  </div>
+                </button>
+              )}
+
+              {/* Upload progress bar */}
+              {isUploadingImage && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Uploading... {imageUploadProgress}%
+                  </p>
+                  <Progress value={imageUploadProgress} className="h-1.5" />
+                </div>
+              )}
+
+              {/* Validation error */}
+              {imageError && (
+                <p className="text-xs text-destructive font-medium">
+                  {imageError}
+                </p>
+              )}
+
+              {/* Backward compatibility notice for existing items with URLs */}
+              {editingItem && form.imageUrl && !imagePreviewUrl && (
+                <p className="text-xs text-muted-foreground">
+                  No image stored — upload a new one above.
+                </p>
               )}
             </div>
 

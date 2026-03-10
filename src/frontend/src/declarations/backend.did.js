@@ -71,6 +71,21 @@ export const UserProfile = IDL.Record({
   'gender' : IDL.Opt(IDL.Text),
   'dailyCalories' : IDL.Opt(IDL.Nat),
 });
+export const ReviewStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
+export const Review = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : ReviewStatus,
+  'userId' : IDL.Opt(IDL.Principal),
+  'createdAt' : IDL.Int,
+  'profession' : IDL.Opt(IDL.Text),
+  'reviewText' : IDL.Text,
+  'reviewerName' : IDL.Text,
+  'rating' : IDL.Nat,
+});
 export const AdminUserRecord = IDL.Record({
   'principal' : IDL.Principal,
   'profile' : UserProfile,
@@ -163,11 +178,18 @@ export const idlService = IDL.Service({
       [],
     ),
   'adminCreateUser' : IDL.Func([IDL.Principal, UserProfile], [], []),
+  'adminDeleteReview' : IDL.Func([IDL.Nat], [], []),
   'adminDeleteSubscription' : IDL.Func([IDL.Nat], [], []),
   'adminDeleteUser' : IDL.Func([IDL.Principal], [], []),
   'adminExtendSubscription' : IDL.Func([IDL.Nat, IDL.Int, IDL.Nat], [], []),
+  'adminGetAllReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
   'adminGetAllUsers' : IDL.Func([], [IDL.Vec(AdminUserRecord)], ['query']),
   'adminPauseSubscription' : IDL.Func([IDL.Nat], [], []),
+  'adminUpdateReview' : IDL.Func(
+      [IDL.Nat, ReviewStatus, IDL.Opt(IDL.Text)],
+      [],
+      [],
+    ),
   'adminUpdateSubscription' : IDL.Func(
       [
         IDL.Nat,
@@ -211,6 +233,7 @@ export const idlService = IDL.Service({
     ),
   'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
   'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
+  'getApprovedReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -223,8 +246,10 @@ export const idlService = IDL.Service({
   'getMyOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
   'getMyProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getMySubscription' : IDL.Func([], [IDL.Opt(Subscription)], ['query']),
+  'getNextReviewId' : IDL.Func([], [IDL.Int], ['query']),
   'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
   'getOrderDelivery' : IDL.Func([IDL.Nat], [IDL.Opt(OrderDelivery)], ['query']),
+  'getReviewCount' : IDL.Func([], [IDL.Int], ['query']),
   'getSaladIngredients' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(SaladIngredient)],
@@ -244,6 +269,11 @@ export const idlService = IDL.Service({
   'saveAppSettings' : IDL.Func([AppSettings], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setSaladIngredients' : IDL.Func([IDL.Nat, IDL.Vec(SaladIngredient)], [], []),
+  'submitReview' : IDL.Func(
+      [IDL.Text, IDL.Opt(IDL.Text), IDL.Nat, IDL.Text],
+      [IDL.Nat],
+      [],
+    ),
   'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
   'toggleAvailability' : IDL.Func([IDL.Nat], [], []),
   'updateCoupon' : IDL.Func([Coupon], [], []),
@@ -319,6 +349,21 @@ export const idlFactory = ({ IDL }) => {
     'idealWeight' : IDL.Opt(IDL.Float64),
     'gender' : IDL.Opt(IDL.Text),
     'dailyCalories' : IDL.Opt(IDL.Nat),
+  });
+  const ReviewStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const Review = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : ReviewStatus,
+    'userId' : IDL.Opt(IDL.Principal),
+    'createdAt' : IDL.Int,
+    'profession' : IDL.Opt(IDL.Text),
+    'reviewText' : IDL.Text,
+    'reviewerName' : IDL.Text,
+    'rating' : IDL.Nat,
   });
   const AdminUserRecord = IDL.Record({
     'principal' : IDL.Principal,
@@ -412,11 +457,18 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'adminCreateUser' : IDL.Func([IDL.Principal, UserProfile], [], []),
+    'adminDeleteReview' : IDL.Func([IDL.Nat], [], []),
     'adminDeleteSubscription' : IDL.Func([IDL.Nat], [], []),
     'adminDeleteUser' : IDL.Func([IDL.Principal], [], []),
     'adminExtendSubscription' : IDL.Func([IDL.Nat, IDL.Int, IDL.Nat], [], []),
+    'adminGetAllReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
     'adminGetAllUsers' : IDL.Func([], [IDL.Vec(AdminUserRecord)], ['query']),
     'adminPauseSubscription' : IDL.Func([IDL.Nat], [], []),
+    'adminUpdateReview' : IDL.Func(
+        [IDL.Nat, ReviewStatus, IDL.Opt(IDL.Text)],
+        [],
+        [],
+      ),
     'adminUpdateSubscription' : IDL.Func(
         [
           IDL.Nat,
@@ -460,6 +512,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
     'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
+    'getApprovedReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -472,12 +525,14 @@ export const idlFactory = ({ IDL }) => {
     'getMyOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
     'getMyProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getMySubscription' : IDL.Func([], [IDL.Opt(Subscription)], ['query']),
+    'getNextReviewId' : IDL.Func([], [IDL.Int], ['query']),
     'getOrderById' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
     'getOrderDelivery' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(OrderDelivery)],
         ['query'],
       ),
+    'getReviewCount' : IDL.Func([], [IDL.Int], ['query']),
     'getSaladIngredients' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(SaladIngredient)],
@@ -499,6 +554,11 @@ export const idlFactory = ({ IDL }) => {
     'setSaladIngredients' : IDL.Func(
         [IDL.Nat, IDL.Vec(SaladIngredient)],
         [],
+        [],
+      ),
+    'submitReview' : IDL.Func(
+        [IDL.Text, IDL.Opt(IDL.Text), IDL.Nat, IDL.Text],
+        [IDL.Nat],
         [],
       ),
     'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),

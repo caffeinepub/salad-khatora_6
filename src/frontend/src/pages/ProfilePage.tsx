@@ -342,10 +342,21 @@ export default function ProfilePage() {
       toast.success("Profile updated successfully");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ProfilePage] Save failed:", msg);
       if (msg.includes("name")) toast.error("Please enter your name");
       else if (msg.includes("mobile") || msg.includes("phone"))
         toast.error("Invalid mobile number");
-      else if (msg.includes("Unauthorized")) toast.error("Please log in again");
+      else if (msg.includes("Unauthorized") || msg.includes("log in"))
+        toast.error("Please log in again");
+      else if (
+        msg.includes("Session not ready") ||
+        msg.includes("not registered")
+      )
+        toast.error(
+          "Session is still loading — please wait a moment and try again",
+        );
+      else if (msg.includes("Not connected"))
+        toast.error("Not connected to backend — please refresh the page");
       else
         toast.error(
           "Failed to save profile. Please check your details and try again.",

@@ -95,6 +95,19 @@ export type OrderStatus = { 'preparing' : null } |
   { 'outForDelivery' : null } |
   { 'delivered' : null } |
   { 'confirmed' : null };
+export interface Review {
+  'id' : bigint,
+  'status' : ReviewStatus,
+  'userId' : [] | [Principal],
+  'createdAt' : bigint,
+  'profession' : [] | [string],
+  'reviewText' : string,
+  'reviewerName' : string,
+  'rating' : bigint,
+}
+export type ReviewStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface SaladIngredient {
   'quantityRequired' : bigint,
   'ingredientId' : bigint,
@@ -153,11 +166,17 @@ export interface _SERVICE {
     bigint
   >,
   'adminCreateUser' : ActorMethod<[Principal, UserProfile], undefined>,
+  'adminDeleteReview' : ActorMethod<[bigint], undefined>,
   'adminDeleteSubscription' : ActorMethod<[bigint], undefined>,
   'adminDeleteUser' : ActorMethod<[Principal], undefined>,
   'adminExtendSubscription' : ActorMethod<[bigint, bigint, bigint], undefined>,
+  'adminGetAllReviews' : ActorMethod<[], Array<Review>>,
   'adminGetAllUsers' : ActorMethod<[], Array<AdminUserRecord>>,
   'adminPauseSubscription' : ActorMethod<[bigint], undefined>,
+  'adminUpdateReview' : ActorMethod<
+    [bigint, ReviewStatus, [] | [string]],
+    undefined
+  >,
   'adminUpdateSubscription' : ActorMethod<
     [
       bigint,
@@ -192,6 +211,7 @@ export interface _SERVICE {
   >,
   'getAllSubscriptions' : ActorMethod<[], Array<Subscription>>,
   'getAppSettings' : ActorMethod<[], AppSettings>,
+  'getApprovedReviews' : ActorMethod<[], Array<Review>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
@@ -200,8 +220,10 @@ export interface _SERVICE {
   'getMyOrders' : ActorMethod<[], Array<Order>>,
   'getMyProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getMySubscription' : ActorMethod<[], [] | [Subscription]>,
+  'getNextReviewId' : ActorMethod<[], bigint>,
   'getOrderById' : ActorMethod<[bigint], [] | [Order]>,
   'getOrderDelivery' : ActorMethod<[bigint], [] | [OrderDelivery]>,
+  'getReviewCount' : ActorMethod<[], bigint>,
   'getSaladIngredients' : ActorMethod<[bigint], Array<SaladIngredient>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
@@ -212,6 +234,7 @@ export interface _SERVICE {
     [bigint, Array<SaladIngredient>],
     undefined
   >,
+  'submitReview' : ActorMethod<[string, [] | [string], bigint, string], bigint>,
   'subscribeToPlan' : ActorMethod<[SubscriptionPlan], bigint>,
   'toggleAvailability' : ActorMethod<[bigint], undefined>,
   'updateCoupon' : ActorMethod<[Coupon], undefined>,

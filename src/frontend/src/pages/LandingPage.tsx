@@ -1,7 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTopOrderedMenuItems } from "@/hooks/useQueries";
+import { useApprovedReviews } from "@/hooks/useReviewQueries";
 import { getOrderFrequency } from "@/utils/orderFrequency";
 import { Link } from "@tanstack/react-router";
 import {
@@ -15,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useCallback, useEffect, useState } from "react";
 
 // Safely unwrap ICP Option<string> OR plain string image URL
 function resolveImageUrl(raw: unknown): string {
@@ -78,10 +88,31 @@ const testimonials = [
   },
 ];
 
+function formatReviewDate(ts: bigint) {
+  return new Date(Number(ts / 1_000_000n)).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function LandingPage() {
   const { data: topItems, isLoading: topItemsLoading } =
     useTopOrderedMenuItems(3);
   const freq = getOrderFrequency();
+  const { data: approvedReviews, isLoading: reviewsLoading } =
+    useApprovedReviews();
+
+  // Carousel auto-scroll
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const scrollNext = useCallback(() => {
+    if (carouselApi) carouselApi.scrollNext();
+  }, [carouselApi]);
+
+  useEffect(() => {
+    const timer = setInterval(scrollNext, 4000);
+    return () => clearInterval(timer);
+  }, [scrollNext]);
 
   return (
     <main className="flex flex-col">
@@ -437,7 +468,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Testimonials / Reviews Carousel */}
       <section className="container mx-auto px-4 py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -456,39 +487,109 @@ export default function LandingPage() {
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
-            <motion.div
-              key={t.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-white rounded-2xl p-6 border border-border card-hover"
-            >
-              <div className="flex items-center gap-0.5 mb-4">
-                {Array.from({ length: t.rating }, (_, j) => (
-                  <Star
-                    key={`star-${t.name}-${j}`}
-                    className="h-4 w-4 fill-amber-400 text-amber-400"
-                  />
-                ))}
-              </div>
-              <p className="text-foreground mb-4 leading-relaxed">"{t.text}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                  {t.name[0]}
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-foreground">
-                    {t.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
+        {reviewsLoading ? (
+          <div className="grid md:grid-cols-3 gap-6">
+            {(["sk-r1", "sk-r2", "sk-r3"] as const).map((k) => (
+              <div
+                key={k}
+                className="bg-white rounded-2xl p-6 border border-border"
+              >
+                <Skeleton className="h-4 w-24 mb-4" />
+                <Skeleton className="h-16 w-full mb-4" />
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          (() => {
+            // Use approved reviews if available, fall back to static testimonials
+            const hasLiveReviews =
+              approvedReviews && approvedReviews.length > 0;
+            const reviewCards = hasLiveReviews
+              ? approvedReviews.slice(0, 6).map((r) => ({
+                  key: r.id.toString(),
+                  rating: Number(r.rating),
+                  text: r.reviewText,
+                  name: r.reviewerName,
+                  role: r.profession ?? "",
+                  date: formatReviewDate(r.createdAt),
+                }))
+              : testimonials.map((t, i) => ({
+                  key: `static-${i}`,
+                  rating: t.rating,
+                  text: t.text,
+                  name: t.name,
+                  role: t.role,
+                  date: "",
+                }));
+
+            return (
+              <div className="relative px-10">
+                <Carousel
+                  opts={{ loop: true, align: "start" }}
+                  setApi={setCarouselApi}
+                >
+                  <CarouselContent>
+                    {reviewCards.map((card) => (
+                      <CarouselItem
+                        key={card.key}
+                        className="basis-full md:basis-1/3"
+                      >
+                        <div className="bg-white rounded-2xl p-6 border border-border card-hover h-full flex flex-col">
+                          <div className="flex items-center gap-0.5 mb-4">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`h-4 w-4 ${
+                                  s <= card.rating
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "fill-muted text-muted-foreground/20"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-foreground mb-4 leading-relaxed flex-1">
+                            &ldquo;{card.text}&rdquo;
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                                {card.name[0]?.toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-sm text-foreground">
+                                  {card.name}
+                                </p>
+                                {card.role && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {card.role}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {card.date && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {card.date}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
+                  <CarouselNext className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
+                </Carousel>
+              </div>
+            );
+          })()
+        )}
       </section>
 
       {/* CTA Section */}

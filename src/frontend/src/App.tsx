@@ -1,4 +1,5 @@
 import AdminLayout from "@/components/AdminLayout";
+import FloatingReviewButton from "@/components/FloatingReviewButton";
 import Navigation from "@/components/Navigation";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,7 +19,9 @@ import AdminDelivery from "@/pages/admin/AdminDelivery";
 import AdminInventory from "@/pages/admin/AdminInventory";
 import AdminMenu from "@/pages/admin/AdminMenu";
 import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminReviews from "@/pages/admin/AdminReviews";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminSubscriptionPlans from "@/pages/admin/AdminSubscriptionPlans";
 import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
 import {
   Outlet,
@@ -36,6 +39,7 @@ const rootRoute = createRootRoute({
         <Navigation />
         <Outlet />
         <WhatsAppButton />
+        <FloatingReviewButton />
         <Toaster richColors position="top-right" />
       </div>
     </CartProvider>
@@ -122,6 +126,12 @@ const adminSubscriptionsRoute = createRoute({
   component: AdminSubscriptions,
 });
 
+const adminSubscriptionPlansRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/subscription-plans",
+  component: AdminSubscriptionPlans,
+});
+
 const adminInventoryRoute = createRoute({
   getParentRoute: () => adminLayoutRoute,
   path: "/inventory",
@@ -152,6 +162,12 @@ const adminSettingsRoute = createRoute({
   component: AdminSettings,
 });
 
+const adminReviewsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/reviews",
+  component: AdminReviews,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   menuRoute,
@@ -166,10 +182,12 @@ const routeTree = rootRoute.addChildren([
     adminOrdersRoute,
     adminCustomersRoute,
     adminSubscriptionsRoute,
+    adminSubscriptionPlansRoute,
     adminInventoryRoute,
     adminCouponsRoute,
     adminDeliveryRoute,
     adminMenuRoute,
+    adminReviewsRoute,
     adminSettingsRoute,
   ]),
 ]);

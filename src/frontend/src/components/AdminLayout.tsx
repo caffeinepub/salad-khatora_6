@@ -8,8 +8,10 @@ import {
   Check,
   ChevronRight,
   Copy,
+  LayoutList,
   Leaf,
   Loader2,
+  MessageSquare,
   Package,
   RefreshCw,
   Settings2,
@@ -34,6 +36,12 @@ const ADMIN_LINKS = [
     exact: false,
   },
   {
+    to: "/admin/subscription-plans",
+    label: "Subscription Plans",
+    icon: LayoutList,
+    exact: false,
+  },
+  {
     to: "/admin/inventory",
     label: "Inventory",
     icon: Package,
@@ -45,6 +53,12 @@ const ADMIN_LINKS = [
     to: "/admin/menu",
     label: "Menu Management",
     icon: UtensilsCrossed,
+    exact: false,
+  },
+  {
+    to: "/admin/reviews",
+    label: "Reviews",
+    icon: MessageSquare,
     exact: false,
   },
   {
@@ -80,13 +94,9 @@ export default function AdminLayout() {
   const isCachedAdmin =
     isAuthenticated && cachedAdmins.includes(currentPrincipal);
 
-  // Show loader while initializing identity OR while performing first-time
-  // admin check AND we have no cached result to fall back to.
   const isStillChecking =
     isInitializing ||
     (isCheckingAdmin && !isCachedAdmin) ||
-    // Also keep showing the loader while the actor is being set up
-    // (isAdmin is undefined means the query hasn't resolved yet)
     (isAuthenticated &&
       isAdmin === undefined &&
       isRefetchingAdmin &&
@@ -111,10 +121,7 @@ export default function AdminLayout() {
     );
   }
 
-  // Deny access only when we have a definitive answer (not just undefined)
-  // OR when cached result is also absent.
   if (!isAuthenticated || (isAdmin === false && !isCachedAdmin)) {
-    // Not logged in at all — show simple "please log in" screen
     if (!isAuthenticated) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -146,7 +153,6 @@ export default function AdminLayout() {
       );
     }
 
-    // Logged in but NOT admin — show helpful setup instructions
     const myPrincipal = identity?.getPrincipal().toString() ?? "";
 
     function handleCopyPrincipal() {
@@ -183,7 +189,6 @@ export default function AdminLayout() {
               steps below.
             </p>
 
-            {/* Principal display */}
             <div className="mb-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                 Your Principal ID
@@ -208,7 +213,6 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            {/* Setup steps */}
             <div className="bg-muted/20 rounded-xl border border-border p-4 mb-5 space-y-3 text-sm">
               <p className="font-semibold text-foreground text-xs uppercase tracking-wide">
                 How to get admin access
@@ -239,7 +243,6 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col gap-2">
               <button
                 type="button"

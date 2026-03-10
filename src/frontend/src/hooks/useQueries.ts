@@ -12,6 +12,19 @@ import type { SubscriptionPlan } from "../backend";
 import { getOrderFrequency } from "../utils/orderFrequency";
 import { useActor } from "./useActor";
 
+// Local type for plan templates (backend.d.ts defines these but backend.ts doesn't export them yet)
+export interface SubscriptionPlanTemplate {
+  id: bigint;
+  name: string;
+  durationType: string;
+  saladCount: bigint;
+  price: number;
+  deliveryFrequency: string;
+  features: Array<string>;
+  badge?: string;
+  active: boolean;
+}
+
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
 export function useAllMenuItems() {
@@ -42,13 +55,52 @@ export function useMenuItemsByCategory(category: string) {
 
 export function useMyProfile() {
   const { actor, isFetching } = useActor();
+  const isAuthenticated = !!(actor && !isFetching);
+
   return useQuery<UserProfile | null>({
-    queryKey: ["myProfile"],
+    queryKey: ["myProfile", actor ? "ready" : "pending"],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getMyProfile();
+      try {
+        // getMyProfile returns ?UserProfile in Motoko which becomes [] | [UserProfile] in JS
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = await (actor as any).getMyProfile();
+        // Unwrap Motoko Option: [] means null, [value] means Some(value)
+        if (Array.isArray(raw)) {
+          const result = raw.length > 0 ? (raw[0] as UserProfile) : null;
+          console.log(
+            "[Profile] getMyProfile result:",
+            result ? "found" : "empty",
+          );
+          return result;
+        }
+        // Fallback: direct value (shouldn't happen but handle gracefully)
+        return (raw as UserProfile) ?? null;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // If user is not yet registered (init call still in flight), retry
+        if (msg.includes("not registered") || msg.includes("Unauthorized")) {
+          console.warn(
+            "[Profile] getMyProfile failed — user may not be registered yet, will retry:",
+            msg,
+          );
+          throw err; // Let React Query retry
+        }
+        console.error("[Profile] getMyProfile unexpected error:", err);
+        return null;
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: isAuthenticated,
+    // Retry up to 5 times with exponential backoff for "not registered" errors
+    retry: (failureCount, err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("not registered") || msg.includes("Unauthorized")) {
+        return failureCount < 5;
+      }
+      return false;
+    },
+    retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 8000),
+    staleTime: 0,
   });
 }
 
@@ -57,11 +109,35 @@ export function useSaveProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error("Not connected");
-      await actor.createOrUpdateProfile(profile);
+      if (!actor)
+        throw new Error(
+          "Not connected to backend. Please refresh and try again.",
+        );
+      console.log("[Profile] Saving profile for principal:", profile.name);
+      try {
+        await actor.createOrUpdateProfile(profile);
+        console.log("[Profile] Profile saved successfully");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[Profile] createOrUpdateProfile failed:", msg, err);
+        // Re-throw with a clean message for the UI
+        if (msg.includes("not registered") || msg.includes("Unauthorized")) {
+          throw new Error(
+            "Session not ready. Please wait a moment and try again.",
+          );
+        }
+        if (msg.includes("name")) throw new Error("name");
+        if (msg.includes("mobile") || msg.includes("phone"))
+          throw new Error("mobile");
+        throw new Error(msg);
+      }
     },
     onSuccess: () => {
+      // Invalidate both possible query keys to ensure profile reloads
       void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+    },
+    onError: (err) => {
+      console.error("[Profile] useSaveProfile mutation error:", err);
     },
   });
 }
@@ -129,6 +205,34 @@ export function useSubscribeToPlan() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
     },
+  });
+}
+
+export function useSubscribeToPlanTemplate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).subscribeToPlanTemplate(templateId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
+    },
+  });
+}
+
+export function useActiveSubscriptionPlanTemplates() {
+  const { actor, isFetching } = useActor();
+  return useQuery<SubscriptionPlanTemplate[]>({
+    queryKey: ["activeSubscriptionPlanTemplates"],
+    queryFn: async () => {
+      if (!actor) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getActiveSubscriptionPlanTemplates();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 

@@ -7,6 +7,16 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface Review {
+    id: bigint;
+    status: ReviewStatus;
+    userId?: Principal;
+    createdAt: bigint;
+    profession?: string;
+    reviewText: string;
+    reviewerName: string;
+    rating: bigint;
+}
 export interface AdminUserRecord {
     principal: Principal;
     profile: UserProfile;
@@ -26,12 +36,6 @@ export interface OrderItem {
     unitPrice: number;
     menuItemId: bigint;
 }
-export interface DashboardStats {
-    totalRevenue: number;
-    totalCustomers: bigint;
-    activeSubscriptions: bigint;
-    todayOrders: bigint;
-}
 export interface Order {
     id: bigint;
     status: OrderStatus;
@@ -40,6 +44,12 @@ export interface Order {
     totalAmount: number;
     notes?: string;
     items: Array<OrderItem>;
+}
+export interface DashboardStats {
+    totalRevenue: number;
+    totalCustomers: bigint;
+    activeSubscriptions: bigint;
+    todayOrders: bigint;
 }
 export interface AppSettings {
     deliveryCharge: number;
@@ -126,6 +136,30 @@ export enum OrderStatus {
     delivered = "delivered",
     confirmed = "confirmed"
 }
+export enum ReviewStatus {
+    pending = "pending",
+    approved = "approved",
+    rejected = "rejected"
+}
+export enum DurationType {
+    weekly = "weekly",
+    monthly = "monthly"
+}
+export enum DeliveryFrequency {
+    daily = "daily",
+    weekly = "weekly"
+}
+export interface SubscriptionPlanTemplate {
+    id: bigint;
+    name: string;
+    durationType: DurationType;
+    saladCount: bigint;
+    price: number;
+    deliveryFrequency: DeliveryFrequency;
+    features: Array<string>;
+    badge?: string;
+    active: boolean;
+}
 export enum SubscriptionPlan {
     monthly = "monthly",
     weekly = "weekly"
@@ -141,6 +175,13 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    createSubscriptionPlanTemplate(name: string, durationType: DurationType, saladCount: bigint, price: number, deliveryFrequency: DeliveryFrequency, features: Array<string>, badge: string | null): Promise<bigint>;
+    updateSubscriptionPlanTemplate(id: bigint, name: string, durationType: DurationType, saladCount: bigint, price: number, deliveryFrequency: DeliveryFrequency, features: Array<string>, badge: string | null, active: boolean): Promise<void>;
+    deleteSubscriptionPlanTemplate(id: bigint): Promise<void>;
+    toggleSubscriptionPlanTemplateStatus(id: bigint): Promise<void>;
+    getAllSubscriptionPlanTemplates(): Promise<Array<SubscriptionPlanTemplate>>;
+    getActiveSubscriptionPlanTemplates(): Promise<Array<SubscriptionPlanTemplate>>;
+    subscribeToPlanTemplate(templateId: bigint): Promise<bigint>;
     addCoupon(coupon: Coupon): Promise<void>;
     addDeliveryRider(rider: DeliveryRider): Promise<void>;
     addIngredient(item: IngredientItem): Promise<void>;
@@ -148,11 +189,14 @@ export interface backendInterface {
     adminCancelSubscription(id: bigint): Promise<void>;
     adminCreateSubscription(userId: Principal, plan: SubscriptionPlan, totalSalads: bigint, remainingSalads: bigint, startDate: bigint, endDate: bigint, status: SubscriptionStatus): Promise<bigint>;
     adminCreateUser(user: Principal, profile: UserProfile): Promise<void>;
+    adminDeleteReview(id: bigint): Promise<void>;
     adminDeleteSubscription(id: bigint): Promise<void>;
     adminDeleteUser(user: Principal): Promise<void>;
     adminExtendSubscription(id: bigint, newEndDate: bigint, additionalSalads: bigint): Promise<void>;
+    adminGetAllReviews(): Promise<Array<Review>>;
     adminGetAllUsers(): Promise<Array<AdminUserRecord>>;
     adminPauseSubscription(id: bigint): Promise<void>;
+    adminUpdateReview(id: bigint, status: ReviewStatus, profession: string | null): Promise<void>;
     adminUpdateSubscription(id: bigint, plan: SubscriptionPlan, totalSalads: bigint, remainingSalads: bigint, startDate: bigint, endDate: bigint, status: SubscriptionStatus): Promise<void>;
     adminUpdateUser(user: Principal, profile: UserProfile): Promise<void>;
     applyCoupon(code: string): Promise<number>;
@@ -176,6 +220,7 @@ export interface backendInterface {
     }>>;
     getAllSubscriptions(): Promise<Array<Subscription>>;
     getAppSettings(): Promise<AppSettings>;
+    getApprovedReviews(): Promise<Array<Review>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDashboardStats(): Promise<DashboardStats>;
@@ -184,8 +229,10 @@ export interface backendInterface {
     getMyOrders(): Promise<Array<Order>>;
     getMyProfile(): Promise<UserProfile | null>;
     getMySubscription(): Promise<Subscription | null>;
+    getNextReviewId(): Promise<bigint>;
     getOrderById(orderId: bigint): Promise<Order | null>;
     getOrderDelivery(orderId: bigint): Promise<OrderDelivery | null>;
+    getReviewCount(): Promise<bigint>;
     getSaladIngredients(saladId: bigint): Promise<Array<SaladIngredient>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -193,6 +240,7 @@ export interface backendInterface {
     saveAppSettings(settings: AppSettings): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setSaladIngredients(saladId: bigint, ingredientList: Array<SaladIngredient>): Promise<void>;
+    submitReview(reviewerName: string, profession: string | null, rating: bigint, reviewText: string): Promise<bigint>;
     subscribeToPlan(plan: SubscriptionPlan): Promise<bigint>;
     toggleAvailability(id: bigint): Promise<void>;
     updateCoupon(coupon: Coupon): Promise<void>;

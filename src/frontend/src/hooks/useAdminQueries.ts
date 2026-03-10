@@ -753,3 +753,117 @@ export function useIsCallerAdmin() {
 
   return query;
 }
+
+// ─── Admin: Subscription Plan Templates ───────────────────────────────────────
+
+export function useAllSubscriptionPlanTemplates() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["allSubscriptionPlanTemplates"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return (actor as any).getAllSubscriptionPlanTemplates();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateSubscriptionPlanTemplate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      name: string;
+      durationType: string;
+      saladCount: bigint;
+      price: number;
+      deliveryFrequency: string;
+      features: string[];
+      badge: string | null;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).createSubscriptionPlanTemplate(
+        args.name,
+        args.durationType,
+        args.saladCount,
+        args.price,
+        args.deliveryFrequency,
+        args.features,
+        args.badge,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["allSubscriptionPlanTemplates"],
+      });
+    },
+  });
+}
+
+export function useUpdateSubscriptionPlanTemplate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      name: string;
+      durationType: string;
+      saladCount: bigint;
+      price: number;
+      deliveryFrequency: string;
+      features: string[];
+      badge: string | null;
+      active: boolean;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).updateSubscriptionPlanTemplate(
+        args.id,
+        args.name,
+        args.durationType,
+        args.saladCount,
+        args.price,
+        args.deliveryFrequency,
+        args.features,
+        args.badge,
+        args.active,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["allSubscriptionPlanTemplates"],
+      });
+    },
+  });
+}
+
+export function useDeleteSubscriptionPlanTemplate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).deleteSubscriptionPlanTemplate(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["allSubscriptionPlanTemplates"],
+      });
+    },
+  });
+}
+
+export function useToggleSubscriptionPlanTemplateStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).toggleSubscriptionPlanTemplateStatus(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["allSubscriptionPlanTemplates"],
+      });
+    },
+  });
+}

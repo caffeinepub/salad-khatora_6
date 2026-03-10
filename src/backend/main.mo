@@ -8,11 +8,11 @@ import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
 
+
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-
-
+// MIGRATION: Keep this with clause for main actor!
 
 actor {
   /////////////////////
@@ -190,6 +190,48 @@ actor {
     businessAddress : Text;
   };
 
+  // Review Status
+  public type ReviewStatus = {
+    #pending;
+    #approved;
+    #rejected;
+  };
+
+  // Review Type
+  public type Review = {
+    id : Nat;
+    userId : ?Principal;
+    reviewerName : Text;
+    profession : ?Text;
+    rating : Nat;
+    reviewText : Text;
+    status : ReviewStatus;
+    createdAt : Int;
+  };
+
+  // Subscription Plan Template
+  public type DurationType = {
+    #weekly;
+    #monthly;
+  };
+
+  public type DeliveryFrequency = {
+    #daily;
+    #weekly;
+  };
+
+  public type SubscriptionPlanTemplate = {
+    id : Nat;
+    name : Text;
+    durationType : DurationType;
+    saladCount : Nat;
+    price : Float;
+    deliveryFrequency : DeliveryFrequency;
+    features : [Text];
+    badge : ?Text;
+    active : Bool;
+  };
+
   /////////////////////
   // STATE           //
   /////////////////////
@@ -206,8 +248,14 @@ actor {
   let deliveryRiders = Map.empty<Nat, DeliveryRider>();
   let orderDeliveries = Map.empty<Nat, OrderDelivery>();
   let saladIngredients = Map.empty<Nat, [SaladIngredient]>();
-
   var nextSubscriptionId = 1;
+
+  let subscriptionPlanTemplates = Map.empty<Nat, SubscriptionPlanTemplate>();
+  var nextPlanTemplateId : Nat = 1;
+  var planTemplatesSeeded : Bool = false;
+
+  let reviews = Map.empty<Nat, Review>();
+  var nextReviewId : Nat = 1;
 
   var appSettings : AppSettings = {
     businessName = "Salad Khatora";
@@ -219,6 +267,99 @@ actor {
     servicePincodes = [];
     gstNumber = "";
     businessAddress = "";
+  };
+
+  ///////////////////////
+  // REVIEWS           //
+  ///////////////////////
+
+  public shared ({ caller }) func submitReview(
+    reviewerName : Text,
+    profession : ?Text,
+    rating : Nat,
+    reviewText : Text,
+  ) : async Nat {
+    if (reviewerName == "") {
+      Runtime.trap("Reviewer name cannot be empty");
+    };
+    if (reviewText == "") {
+      Runtime.trap("Review text cannot be empty");
+    };
+
+    if (reviewText != "" and reviewText.size() < 10) {
+      Runtime.trap("Review text must be at least 10 characters");
+    };
+
+    if (rating < 1 or rating > 5) {
+      Runtime.trap("Rating must be between 1 and 5");
+    };
+
+    let reviewId = nextReviewId;
+    nextReviewId += 1;
+
+    let review = {
+      id = reviewId;
+      userId = ?caller;
+      reviewerName;
+      profession;
+      rating;
+      reviewText;
+      status = #pending;
+      createdAt = Time.now();
+    };
+
+    reviews.add(reviewId, review);
+    reviewId;
+  };
+
+  public query func getApprovedReviews() : async [Review] {
+    reviews.toArray().map(func((_, review)) { review }).filter(func(r) { r.status == #approved });
+  };
+
+  public query ({ caller }) func adminGetAllReviews() : async [Review] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can view all reviews");
+    };
+    reviews.toArray().map(func((_, review)) { review });
+  };
+
+  public shared ({ caller }) func adminUpdateReview(
+    id : Nat,
+    status : ReviewStatus,
+    profession : ?Text,
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can update reviews");
+    };
+
+    switch (reviews.get(id)) {
+      case (null) { Runtime.trap("Review not found") };
+      case (?review) {
+        let updatedReview = { review with status; profession };
+        reviews.add(id, updatedReview);
+      };
+    };
+  };
+
+  public shared ({ caller }) func adminDeleteReview(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized: Only admins can delete reviews");
+    };
+
+    switch (reviews.get(id)) {
+      case (null) { Runtime.trap("Review not found") };
+      case (?_) {
+        reviews.remove(id);
+      };
+    };
+  };
+
+  public query func getReviewCount() : async Int {
+    reviews.size();
+  };
+
+  public query func getNextReviewId() : async Int {
+    nextReviewId;
   };
 
   ///////////////////////
@@ -738,6 +879,146 @@ actor {
         subscriptions.remove(id);
       };
     };
+  };
+
+  ////////////////////////////
+  // SUBSCRIPTION PLANS     //
+  ////////////////////////////
+
+  func seedPlanTemplates() {
+    if (planTemplatesSeeded) return;
+    planTemplatesSeeded := true;
+
+    let seed : [(Nat, Text, DurationType, Nat, Float, DeliveryFrequency, [Text], ?Text)] = [
+      (1, "Weekly Weight Loss Plan", #weekly, 6, 599.0, #daily, ["6 salads per week", "Low calorie options", "Free delivery", "Customisable portions"], ?"Popular"),
+      (2, "Weekly Protein Plan", #weekly, 6, 699.0, #daily, ["6 salads per week", "High protein ingredients", "Free delivery", "Gym-friendly menu"], null),
+      (3, "Monthly Fitness Plan", #monthly, 26, 2199.0, #daily, ["26 salads per month", "Balanced nutrition", "Free delivery", "Priority menu access"], ?"Best Value"),
+      (4, "Monthly Premium Plan", #monthly, 30, 2799.0, #daily, ["30 salads per month", "Premium ingredients", "Free delivery", "Dedicated support", "Exclusive menu items"], null),
+    ];
+
+    for ((id, name, dt, sc, price, df, features, badge) in seed.vals()) {
+      let t : SubscriptionPlanTemplate = { id; name; durationType = dt; saladCount = sc; price; deliveryFrequency = df; features; badge; active = true };
+      subscriptionPlanTemplates.add(id, t);
+      if (id >= nextPlanTemplateId) { nextPlanTemplateId := id + 1 };
+    };
+  };
+
+  public query func getActiveSubscriptionPlanTemplates() : async [SubscriptionPlanTemplate] {
+    seedPlanTemplates();
+    subscriptionPlanTemplates.values().filter(func(t) { t.active }).toArray();
+  };
+
+  public query ({ caller }) func getAllSubscriptionPlanTemplates() : async [SubscriptionPlanTemplate] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedPlanTemplates();
+    subscriptionPlanTemplates.values().toArray();
+  };
+
+  public shared ({ caller }) func createSubscriptionPlanTemplate(
+    name : Text,
+    durationType : DurationType,
+    saladCount : Nat,
+    price : Float,
+    deliveryFrequency : DeliveryFrequency,
+    features : [Text],
+    badge : ?Text,
+  ) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedPlanTemplates();
+    let id = nextPlanTemplateId;
+    nextPlanTemplateId += 1;
+    let t : SubscriptionPlanTemplate = { id; name; durationType; saladCount; price; deliveryFrequency; features; badge; active = true };
+    subscriptionPlanTemplates.add(id, t);
+    id;
+  };
+
+  public shared ({ caller }) func updateSubscriptionPlanTemplate(
+    id : Nat,
+    name : Text,
+    durationType : DurationType,
+    saladCount : Nat,
+    price : Float,
+    deliveryFrequency : DeliveryFrequency,
+    features : [Text],
+    badge : ?Text,
+    active : Bool,
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (subscriptionPlanTemplates.get(id)) {
+      case (null) { Runtime.trap("Plan not found") };
+      case (?_) {
+        let t : SubscriptionPlanTemplate = { id; name; durationType; saladCount; price; deliveryFrequency; features; badge; active };
+        subscriptionPlanTemplates.add(id, t);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteSubscriptionPlanTemplate(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    ignore subscriptionPlanTemplates.remove(id);
+  };
+
+  public shared ({ caller }) func toggleSubscriptionPlanTemplateStatus(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    switch (subscriptionPlanTemplates.get(id)) {
+      case (null) { Runtime.trap("Plan not found") };
+      case (?t) {
+        subscriptionPlanTemplates.add(id, { t with active = not t.active });
+      };
+    };
+  };
+
+  public shared ({ caller }) func subscribeToPlanTemplate(templateId : Nat) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can subscribe");
+    };
+    seedPlanTemplates();
+    let tmpl = switch (subscriptionPlanTemplates.get(templateId)) {
+      case (null) { Runtime.trap("Plan not found") };
+      case (?t) { t };
+    };
+    if (not tmpl.active) { Runtime.trap("Plan is not active") };
+
+    // Cancel existing active subscription
+    let active = subscriptions.values().find(func(s) { s.userId == caller and s.status == #active });
+    switch (active) {
+      case (?sub) { subscriptions.add(sub.id, { sub with status = #cancelled : SubscriptionStatus }) };
+      case (null) {};
+    };
+
+    let subId = nextSubscriptionId;
+    nextSubscriptionId += 1;
+    let now = Time.now();
+    let endDate = switch (tmpl.durationType) {
+      case (#weekly) { now + 7 * 24 * 60 * 60 * 1_000_000_000 };
+      case (#monthly) { now + 30 * 24 * 60 * 60 * 1_000_000_000 };
+    };
+    let plan : SubscriptionPlan = switch (tmpl.durationType) {
+      case (#weekly) { #weekly };
+      case (#monthly) { #monthly };
+    };
+    let newSub : Subscription = {
+      id = subId;
+      userId = caller;
+      plan;
+      totalSalads = tmpl.saladCount;
+      remainingSalads = tmpl.saladCount;
+      startDate = now;
+      endDate;
+      status = #active;
+    };
+    subscriptions.add(subId, newSub);
+    subId;
   };
 
   ////////////////////////////

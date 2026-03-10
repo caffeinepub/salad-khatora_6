@@ -1,13 +1,7 @@
 import { OrderStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useMyOrders } from "@/hooks/useQueries";
@@ -17,11 +11,15 @@ import {
   CheckCircle2,
   ChefHat,
   Clock,
+  CreditCard,
   Leaf,
   Loader2,
   LogIn,
+  MapPin,
+  MessageSquare,
   Package,
   ShoppingBag,
+  Tag,
   Truck,
   XCircle,
 } from "lucide-react";
@@ -164,13 +162,147 @@ const STATUS_BADGE: Record<OrderStatus, { label: string; className: string }> =
 
 function formatDate(timestamp: bigint): string {
   const ms = Number(timestamp / BigInt(1_000_000));
-  return new Intl.DateTimeFormat("en-PK", {
+  return new Intl.DateTimeFormat("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(ms));
+}
+
+interface OrderNoteData {
+  deliveryAddress?: {
+    fullName?: string;
+    mobile?: string;
+    phone?: string;
+    house?: string;
+    street?: string;
+    landmark?: string;
+    city?: string;
+    pincode?: string;
+    label?: string;
+  };
+  paymentMethod?: string;
+  couponCode?: string;
+  notes?: string;
+  customerName?: string;
+  customerPhone?: string;
+}
+
+function parseOrderNotes(raw: string | null | undefined): OrderNoteData | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  // Only try to parse if it looks like JSON
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+  try {
+    return JSON.parse(trimmed) as OrderNoteData;
+  } catch {
+    return null;
+  }
+}
+
+function OrderDeliverySummary({ notes }: { notes: string }) {
+  const parsed = parseOrderNotes(notes);
+
+  // If not parseable JSON, show as plain text
+  if (!parsed) {
+    return (
+      <div className="mt-3 pt-3 border-t border-border">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-semibold">Note:</span> {notes}
+        </p>
+      </div>
+    );
+  }
+
+  const addr = parsed.deliveryAddress;
+  const hasAddress =
+    addr &&
+    (addr.fullName ||
+      addr.mobile ||
+      addr.phone ||
+      addr.house ||
+      addr.street ||
+      addr.city ||
+      addr.pincode);
+
+  const addressLine = [addr?.house, addr?.street].filter(Boolean).join(", ");
+  const cityLine = [addr?.city, addr?.pincode].filter(Boolean).join(" - ");
+  const phoneNum = addr?.mobile || addr?.phone || parsed.customerPhone;
+  const fullName = addr?.fullName || parsed.customerName;
+
+  const paymentLabel = (method: string) => {
+    const m = method.toLowerCase();
+    if (m === "cod" || m === "cash") return "Cash on Delivery";
+    if (m === "upi") return "UPI Payment";
+    if (m === "online") return "Online Payment";
+    return method;
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border space-y-3">
+      {/* Delivery Address */}
+      {hasAddress && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <MapPin className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-foreground">
+              Delivery Address
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-0.5 pl-5">
+            {fullName && (
+              <p className="font-medium text-foreground">{fullName}</p>
+            )}
+            {phoneNum && <p>Phone: {phoneNum}</p>}
+            {addressLine && <p>{addressLine}</p>}
+            {addr?.landmark && <p>Landmark: {addr.landmark}</p>}
+            {cityLine && <p>{cityLine}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Method */}
+      {parsed.paymentMethod && (
+        <div className="flex items-center gap-1.5">
+          <CreditCard className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Payment:</span>{" "}
+            {paymentLabel(parsed.paymentMethod)}
+          </span>
+        </div>
+      )}
+
+      {/* Coupon */}
+      {parsed.couponCode && (
+        <div className="flex items-center gap-1.5">
+          <Tag className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+          <span className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              Coupon Applied:
+            </span>{" "}
+            <span className="text-green-700 font-mono font-semibold">
+              {parsed.couponCode}
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* Customer Notes */}
+      {parsed.notes && (
+        <div className="flex items-start gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-primary flex-shrink-0 mt-0.5" />
+          <span className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              Customer Note:
+            </span>{" "}
+            {parsed.notes}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function OrderSkeleton() {
@@ -405,10 +537,17 @@ export default function OrdersPage() {
                         >
                           <span className="text-foreground">
                             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                            {item.quantity.toString()}x item #
-                            {(
-                              (item as any).saladId ?? (item as any).menuItemId
-                            )?.toString()}
+                            {item.quantity.toString()}x{" "}
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            {(item as any).itemName
+                              ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                (item as any).itemName
+                              : `item #${(
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  (item as any).saladId ??
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    (item as any).menuItemId
+                                )?.toString()}`}
                           </span>
                           <span className="text-muted-foreground">
                             ₹
@@ -419,13 +558,10 @@ export default function OrdersPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Order notes: parsed structured display */}
                     {order.notes && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-semibold">Note:</span>{" "}
-                          {order.notes}
-                        </p>
-                      </div>
+                      <OrderDeliverySummary notes={order.notes} />
                     )}
                   </div>
 

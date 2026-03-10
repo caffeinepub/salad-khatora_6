@@ -1,13 +1,14 @@
-import { SubscriptionPlan, SubscriptionStatus } from "@/backend";
+import { SubscriptionStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
+  useActiveSubscriptionPlanTemplates,
   useCancelSubscription,
   useMySubscription,
-  useSubscribeToPlan,
+  useSubscribeToPlanTemplate,
 } from "@/hooks/useQueries";
 import { Link } from "@tanstack/react-router";
 import {
@@ -19,70 +20,34 @@ import {
   LogIn,
   Salad,
   Sparkles,
+  Truck,
   XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 
-const PLANS = [
-  {
-    id: SubscriptionPlan.weekly,
-    name: "Weekly Plan",
-    saladCount: 6,
-    period: "per week",
-    price: "₹1,800",
-    icon: CalendarDays,
-    color: "from-emerald-50 to-green-100",
-    borderColor: "border-green-200",
-    accentColor: "text-green-700",
-    badgeBg: "bg-green-100 text-green-700",
-    highlight: false,
-    features: [
-      "6 freshly prepared salads",
-      "Weekly delivery schedule",
-      "Mix & match from menu",
-      "Free delivery",
-    ],
-    ocidCard: "subscriptions.weekly_plan.card",
-    ocidButton: "subscriptions.weekly.primary_button",
-  },
-  {
-    id: SubscriptionPlan.monthly,
-    name: "Monthly Plan",
-    saladCount: 24,
-    period: "per month",
-    price: "₹6,000",
-    icon: CalendarCheck,
-    color: "from-green-700 to-green-800",
-    borderColor: "border-green-600",
-    accentColor: "text-white",
-    badgeBg: "bg-white/20 text-white",
-    highlight: true,
-    features: [
-      "24 freshly prepared salads",
-      "Daily delivery available",
-      "Priority menu selection",
-      "Free delivery + bonus salad",
-    ],
-    ocidCard: "subscriptions.monthly_plan.card",
-    ocidButton: "subscriptions.monthly.primary_button",
-  },
-];
+// Duration / delivery constants matching backend enum values
+const DURATION_WEEKLY = "weekly";
+const DURATION_MONTHLY = "monthly";
+const DELIVERY_DAILY = "daily";
 
 function SubscriptionSkeleton() {
   return (
     <div
-      className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto"
+      className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
       data-ocid="subscriptions.loading_state"
     >
-      {["sk1", "sk2"].map((sk) => (
+      {[1, 2, 3].map((sk) => (
         <div
           key={sk}
           className="rounded-2xl border border-border p-8 space-y-5"
         >
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <Skeleton className="h-6 w-36" />
-          <Skeleton className="h-9 w-24" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-4 w-24" />
           <div className="space-y-2.5 pt-2">
             {[1, 2, 3, 4].map((n) => (
               <Skeleton key={n} className="h-4 w-full" />
@@ -97,29 +62,54 @@ function SubscriptionSkeleton() {
 
 function formatDate(timestamp: bigint): string {
   const ms = Number(timestamp / BigInt(1_000_000));
-  return new Intl.DateTimeFormat("en-PK", {
+  return new Intl.DateTimeFormat("en-IN", {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(new Date(ms));
 }
 
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
 export default function SubscriptionsPage() {
   const { identity, login, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { data: subscription, isLoading, isError } = useMySubscription();
-  const subscribeMutation = useSubscribeToPlan();
+
+  const { data: subscription, isLoading: subLoading } = useMySubscription();
+  const {
+    data: plans,
+    isLoading: plansLoading,
+    isError: plansError,
+  } = useActiveSubscriptionPlanTemplates();
+
+  const subscribeMutation = useSubscribeToPlanTemplate();
   const cancelMutation = useCancelSubscription();
 
+  const isLoading = subLoading || plansLoading;
   const hasActiveSub =
     subscription && subscription.status === SubscriptionStatus.active;
 
-  function handleSubscribe(plan: SubscriptionPlan) {
-    subscribeMutation.mutate(plan, {
+  // Group plans: weekly first, then monthly
+  const weeklyPlans = (plans ?? []).filter(
+    (p) => p.durationType === DURATION_WEEKLY,
+  );
+  const monthlyPlans = (plans ?? []).filter(
+    (p) => p.durationType === DURATION_MONTHLY,
+  );
+  const sortedPlans = [...weeklyPlans, ...monthlyPlans];
+
+  function handleSubscribe(templateId: bigint, planName: string) {
+    subscribeMutation.mutate(templateId, {
       onSuccess: () => {
         toast.success("Subscription activated!", {
-          description: `Your ${plan} plan is now active.`,
+          description: `You're now subscribed to ${planName}.`,
         });
       },
       onError: () => {
@@ -218,7 +208,7 @@ export default function SubscriptionsPage() {
         </motion.div>
       </section>
 
-      <div className="container mx-auto px-4 max-w-4xl -mt-6">
+      <div className="container mx-auto px-4 max-w-5xl -mt-6">
         {/* Active Subscription Banner */}
         <AnimatePresence>
           {hasActiveSub && (
@@ -243,20 +233,15 @@ export default function SubscriptionsPage() {
                         <span className="capitalize">{subscription.plan}</span>{" "}
                         Plan
                       </p>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(subscription as any).remainingSalads !== undefined && (
+                      {subscription.remainingSalads !== undefined && (
                         <p className="text-xs text-green-700/70 mt-0.5">
-                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                          {(subscription as any).remainingSalads.toString()}{" "}
-                          salads remaining out of{" "}
-                          {(subscription as any).totalSalads.toString()}
+                          {subscription.remainingSalads.toString()} salads
+                          remaining out of {subscription.totalSalads.toString()}
                         </p>
                       )}
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(subscription as any).endDate !== undefined && (
+                      {subscription.endDate !== undefined && (
                         <p className="text-xs text-green-700/70 mt-0.5">
-                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                          Expires {formatDate((subscription as any).endDate)}
+                          Expires {formatDate(subscription.endDate)}
                         </p>
                       )}
                       <p className="text-xs text-green-700/70 mt-0.5">
@@ -296,7 +281,7 @@ export default function SubscriptionsPage() {
         </AnimatePresence>
 
         {/* Plans */}
-        {isError ? (
+        {plansError ? (
           <div
             className="flex flex-col items-center justify-center py-20 gap-4 text-center"
             data-ocid="subscriptions.error_state"
@@ -305,133 +290,212 @@ export default function SubscriptionsPage() {
               <Salad className="h-8 w-8 text-destructive/50" />
             </div>
             <div>
-              <p className="font-semibold text-white mb-1">
+              <p className="font-semibold text-foreground mb-1">
                 Something went wrong
               </p>
-              <p className="text-white/70 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Unable to load subscription plans. Please refresh the page.
               </p>
             </div>
           </div>
         ) : isLoading ? (
-          <SubscriptionSkeleton />
+          <div className="mt-8">
+            <SubscriptionSkeleton />
+          </div>
+        ) : sortedPlans.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center py-20 gap-4 text-center"
+            data-ocid="subscriptions.empty_state"
+          >
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Salad className="h-8 w-8 text-primary/50" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground mb-1">
+                No plans available yet
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Check back soon — subscription plans are coming!
+              </p>
+            </div>
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mt-8"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8"
           >
-            {PLANS.map((plan, i) => {
-              const PlanIcon = plan.icon;
-              const isCurrentPlan =
-                hasActiveSub && subscription?.plan === plan.id;
-              const isHighlighted = plan.highlight;
+            {sortedPlans.map((plan, i) => {
+              const isWeekly = plan.durationType === DURATION_WEEKLY;
+              const isHighlighted = !!plan.badge;
+              const isSubscribing =
+                subscribeMutation.isPending &&
+                subscribeMutation.variables === plan.id;
 
               return (
                 <motion.div
-                  key={plan.id}
+                  key={plan.id.toString()}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  data-ocid={plan.ocidCard}
+                  transition={{ delay: i * 0.08 }}
+                  data-ocid={`subscriptions.plan.item.${i + 1}`}
+                  className="h-full"
                 >
                   <Card
                     className={`relative overflow-hidden h-full border-2 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
                       isHighlighted
-                        ? "border-green-600 shadow-lg shadow-green-200"
-                        : plan.borderColor
+                        ? "border-green-600 shadow-lg shadow-green-100"
+                        : "border-green-200"
                     }`}
                   >
-                    {isHighlighted && (
-                      <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
-                    )}
-                    {isHighlighted && (
-                      <div className="absolute top-4 right-4">
-                        <Badge className="bg-amber-400 text-amber-900 border-0 text-xs font-bold">
-                          Best Value
+                    {/* Gradient background */}
+                    <div
+                      className={`absolute inset-0 bg-gradient-to-br ${
+                        isHighlighted
+                          ? "from-green-700 to-green-800"
+                          : "from-emerald-50 to-green-100"
+                      }`}
+                    />
+
+                    {/* Badge chip */}
+                    {plan.badge && (
+                      <div className="absolute top-4 right-4 z-10">
+                        <Badge className="bg-amber-400 text-amber-900 border-0 text-xs font-bold shadow-sm">
+                          {plan.badge}
                         </Badge>
                       </div>
                     )}
 
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${plan.color} opacity-100`}
-                    />
-
-                    <CardHeader className="relative z-10 pb-2 pt-7 px-7">
-                      <div
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
-                          isHighlighted ? "bg-white/15" : "bg-green-100"
-                        }`}
-                      >
-                        <PlanIcon
-                          className={`h-6 w-6 ${isHighlighted ? "text-white" : "text-green-700"}`}
-                        />
+                    <CardHeader className="relative z-10 pb-2 pt-7 px-6">
+                      {/* Duration type icon + label */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            isHighlighted ? "bg-white/15" : "bg-green-100"
+                          }`}
+                        >
+                          {isWeekly ? (
+                            <CalendarDays
+                              className={`h-5 w-5 ${
+                                isHighlighted ? "text-white" : "text-green-700"
+                              }`}
+                            />
+                          ) : (
+                            <CalendarCheck
+                              className={`h-5 w-5 ${
+                                isHighlighted ? "text-white" : "text-green-700"
+                              }`}
+                            />
+                          )}
+                        </div>
+                        <span
+                          className={`text-xs font-semibold uppercase tracking-wider ${
+                            isHighlighted
+                              ? "text-emerald-200"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {plan.durationType === DURATION_WEEKLY
+                            ? "Weekly"
+                            : "Monthly"}
+                        </span>
                       </div>
 
+                      {/* Plan name */}
                       <h2
-                        className={`font-display text-2xl font-bold ${isHighlighted ? "text-white" : "text-foreground"}`}
+                        className={`font-display text-xl font-bold leading-tight ${
+                          isHighlighted ? "text-white" : "text-foreground"
+                        }`}
                       >
                         {plan.name}
                       </h2>
 
-                      <div className="flex items-end gap-1 mt-1">
+                      {/* Salad count + delivery frequency */}
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
                         <div
-                          className={`flex items-center gap-2 text-3xl font-display font-extrabold ${isHighlighted ? "text-white" : "text-green-700"}`}
+                          className={`flex items-center gap-1.5 text-sm font-medium ${
+                            isHighlighted ? "text-white" : "text-green-700"
+                          }`}
                         >
-                          <Salad
-                            className={`h-7 w-7 ${isHighlighted ? "text-white/80" : "text-green-600"}`}
-                          />
-                          {plan.saladCount}
+                          <Salad className="h-4 w-4" />
+                          {plan.saladCount.toString()} salads
                         </div>
-                        <span
-                          className={`text-sm pb-1 font-medium ${isHighlighted ? "text-white/70" : "text-muted-foreground"}`}
+                        <div
+                          className={`flex items-center gap-1.5 text-sm font-medium ${
+                            isHighlighted
+                              ? "text-white/80"
+                              : "text-muted-foreground"
+                          }`}
                         >
-                          salads {plan.period}
-                        </span>
+                          <Truck className="h-4 w-4" />
+                          {plan.deliveryFrequency === DELIVERY_DAILY
+                            ? "Daily delivery"
+                            : "Weekly delivery"}
+                        </div>
                       </div>
 
-                      <p
-                        className={`text-lg font-bold mt-2 ${isHighlighted ? "text-emerald-200" : "text-green-700"}`}
-                      >
-                        {plan.price}
+                      {/* Price */}
+                      <div className="mt-3">
                         <span
-                          className={`text-xs font-normal ml-1 ${isHighlighted ? "text-white/60" : "text-muted-foreground"}`}
+                          className={`text-3xl font-display font-extrabold ${
+                            isHighlighted ? "text-white" : "text-green-700"
+                          }`}
                         >
-                          {plan.period}
+                          {formatPrice(plan.price)}
                         </span>
-                      </p>
+                        <span
+                          className={`text-xs font-normal ml-1 ${
+                            isHighlighted
+                              ? "text-white/60"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          /
+                          {plan.durationType === DURATION_WEEKLY
+                            ? "week"
+                            : "month"}
+                        </span>
+                      </div>
                     </CardHeader>
 
-                    <CardContent className="relative z-10 px-7 pb-7">
-                      <ul className="space-y-2.5 mb-6">
-                        {plan.features.map((feature) => (
-                          <li
-                            key={feature}
-                            className="flex items-center gap-2.5 text-sm"
-                          >
-                            <div
-                              className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                isHighlighted ? "bg-white/20" : "bg-green-100"
-                              }`}
+                    <CardContent className="relative z-10 px-6 pb-7">
+                      {/* Features list */}
+                      {plan.features.length > 0 && (
+                        <ul className="space-y-2 mb-6">
+                          {plan.features.map((feature) => (
+                            <li
+                              key={feature}
+                              className="flex items-center gap-2.5 text-sm"
                             >
-                              <Leaf
-                                className={`h-3 w-3 ${isHighlighted ? "text-white" : "text-green-700"}`}
-                              />
-                            </div>
-                            <span
-                              className={
-                                isHighlighted
-                                  ? "text-white/90"
-                                  : "text-foreground"
-                              }
-                            >
-                              {feature}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                              <div
+                                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  isHighlighted ? "bg-white/20" : "bg-green-100"
+                                }`}
+                              >
+                                <Leaf
+                                  className={`h-3 w-3 ${
+                                    isHighlighted
+                                      ? "text-white"
+                                      : "text-green-700"
+                                  }`}
+                                />
+                              </div>
+                              <span
+                                className={
+                                  isHighlighted
+                                    ? "text-white/90"
+                                    : "text-foreground"
+                                }
+                              >
+                                {feature}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
 
-                      {isCurrentPlan ? (
+                      {/* Subscribe button */}
+                      {hasActiveSub ? (
                         <div
                           className={`w-full py-3 rounded-xl text-center text-sm font-semibold flex items-center justify-center gap-2 ${
                             isHighlighted
@@ -440,23 +504,20 @@ export default function SubscriptionsPage() {
                           }`}
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          Current Plan
+                          Already Subscribed
                         </div>
                       ) : (
                         <Button
-                          onClick={() => handleSubscribe(plan.id)}
-                          disabled={
-                            subscribeMutation.isPending || !!hasActiveSub
-                          }
+                          onClick={() => handleSubscribe(plan.id, plan.name)}
+                          disabled={subscribeMutation.isPending}
                           className={`w-full h-11 font-semibold gap-2 rounded-xl transition-all duration-200 ${
                             isHighlighted
                               ? "bg-white text-green-800 hover:bg-white/90 shadow-md"
                               : "bg-primary hover:bg-primary/90 text-white"
                           }`}
-                          data-ocid={plan.ocidButton}
+                          data-ocid={`subscriptions.plan.primary_button.${i + 1}`}
                         >
-                          {subscribeMutation.isPending &&
-                          subscribeMutation.variables === plan.id ? (
+                          {isSubscribing ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
                               Subscribing...
@@ -482,7 +543,7 @@ export default function SubscriptionsPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="mt-10 max-w-3xl mx-auto bg-white rounded-2xl border border-border p-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left shadow-sm"
+          className="mt-10 bg-white rounded-2xl border border-border p-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left shadow-sm"
         >
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
             <Salad className="h-6 w-6 text-primary" />
