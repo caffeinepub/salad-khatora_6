@@ -756,13 +756,68 @@ export function useIsCallerAdmin() {
 
 // ─── Admin: Subscription Plan Templates ───────────────────────────────────────
 
+// Helper: convert string variant to Candid variant object for backend calls
+function toDurationType(v: string): object {
+  if (v === "monthly") return { monthly: null };
+  return { weekly: null };
+}
+
+function toDeliveryFrequency(v: string): object {
+  if (v === "weekly") return { weekly: null };
+  return { daily: null };
+}
+
+// Helper: normalize a plan returned from backend (variants come as { weekly: null } objects)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function normalizePlanTemplate(p: any) {
+  let durationType = "weekly";
+  if (p.durationType) {
+    if (typeof p.durationType === "string") durationType = p.durationType;
+    else if ("monthly" in p.durationType) durationType = "monthly";
+    else durationType = "weekly";
+  }
+  let deliveryFrequency = "daily";
+  if (p.deliveryFrequency) {
+    if (typeof p.deliveryFrequency === "string")
+      deliveryFrequency = p.deliveryFrequency;
+    else if ("weekly" in p.deliveryFrequency) deliveryFrequency = "weekly";
+    else deliveryFrequency = "daily";
+  }
+  return {
+    ...p,
+    id: p.id,
+    saladCount:
+      typeof p.saladCount === "bigint"
+        ? Number(p.saladCount)
+        : Number(p.saladCount ?? 0),
+    price: typeof p.price === "number" ? p.price : Number(p.price ?? 0),
+    badge: Array.isArray(p.badge)
+      ? p.badge.length > 0
+        ? p.badge[0]
+        : null
+      : (p.badge ?? null),
+    features: Array.isArray(p.features) ? p.features : [],
+    durationType,
+    deliveryFrequency,
+  };
+}
+
 export function useAllSubscriptionPlanTemplates() {
   const { actor, isFetching } = useActor();
   return useQuery({
     queryKey: ["allSubscriptionPlanTemplates"],
     queryFn: async () => {
       if (!actor) return [];
-      return (actor as any).getAllSubscriptionPlanTemplates();
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw: any[] = await (
+          actor as any
+        ).getAllSubscriptionPlanTemplates();
+        return raw.map(normalizePlanTemplate);
+      } catch (err) {
+        console.warn("getAllSubscriptionPlanTemplates failed:", err);
+        return [];
+      }
     },
     enabled: !!actor && !isFetching,
   });
@@ -782,19 +837,23 @@ export function useCreateSubscriptionPlanTemplate() {
       badge: string | null;
     }) => {
       if (!actor) throw new Error("Not connected");
+      const badge = args.badge ? [args.badge] : [];
       return (actor as any).createSubscriptionPlanTemplate(
         args.name,
-        args.durationType,
+        toDurationType(args.durationType),
         args.saladCount,
         args.price,
-        args.deliveryFrequency,
+        toDeliveryFrequency(args.deliveryFrequency),
         args.features,
-        args.badge,
+        badge,
       );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["allSubscriptionPlanTemplates"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["activeSubscriptionPlanTemplates"],
       });
     },
   });
@@ -816,21 +875,25 @@ export function useUpdateSubscriptionPlanTemplate() {
       active: boolean;
     }) => {
       if (!actor) throw new Error("Not connected");
+      const badge = args.badge ? [args.badge] : [];
       return (actor as any).updateSubscriptionPlanTemplate(
         args.id,
         args.name,
-        args.durationType,
+        toDurationType(args.durationType),
         args.saladCount,
         args.price,
-        args.deliveryFrequency,
+        toDeliveryFrequency(args.deliveryFrequency),
         args.features,
-        args.badge,
+        badge,
         args.active,
       );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["allSubscriptionPlanTemplates"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["activeSubscriptionPlanTemplates"],
       });
     },
   });
@@ -848,6 +911,9 @@ export function useDeleteSubscriptionPlanTemplate() {
       void queryClient.invalidateQueries({
         queryKey: ["allSubscriptionPlanTemplates"],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["activeSubscriptionPlanTemplates"],
+      });
     },
   });
 }
@@ -863,6 +929,9 @@ export function useToggleSubscriptionPlanTemplateStatus() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["allSubscriptionPlanTemplates"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["activeSubscriptionPlanTemplates"],
       });
     },
   });

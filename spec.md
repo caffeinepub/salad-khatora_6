@@ -1,30 +1,36 @@
 # Salad Khatora
 
 ## Current State
-- Subscription plans are hardcoded as a `SubscriptionPlan` enum (`weekly` / `monthly`) in the backend.
-- The customer Subscriptions page shows two static plan cards.
-- Admin has a Subscriptions section for managing customer subscriptions, but no way to create/edit plan templates.
-- `subscribeToPlan(plan: SubscriptionPlan)` is the current customer subscribe API.
+- Homepage (LandingPage.tsx) has a reviews carousel that shows up to 6 approved reviews (sliced to 6) from the backend via `useApprovedReviews`.
+- No dedicated Reviews page exists.
+- Navigation.tsx has nav links for Home, Menu, My Orders, Profile, Subscriptions -- no Reviews link.
+- App.tsx has no `/reviews` route registered.
+- No rating summary or "View All Reviews" CTA exists.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `SubscriptionPlanTemplate` entity with fields: id, name, durationType (weekly/monthly), saladCount, price, deliveryFrequency (daily/weekly), features (list of strings), badge (optional), active (bool).
-- Backend CRUD: `createSubscriptionPlanTemplate`, `updateSubscriptionPlanTemplate`, `deleteSubscriptionPlanTemplate`, `getActiveSubscriptionPlanTemplates`, `getAllSubscriptionPlanTemplates`.
-- `subscribeToPlanTemplate(templateId)` — creates a customer subscription linked to a specific template.
-- Seed 4 default plan templates on first deploy (Weekly Weight Loss, Weekly Protein, Monthly Fitness, Monthly Premium).
-- Admin panel: new "Subscription Plans" menu item (separate from "Subscriptions").
-- Admin Subscription Plans page: list of all plans, create/edit form (inline or modal), activate/deactivate toggle, delete.
-- Customer Subscriptions page: loads active plan templates dynamically; "Subscribe Now" calls `subscribeToPlanTemplate`.
+- New page: `src/frontend/src/pages/ReviewsPage.tsx`
+  - Fetches all approved reviews from backend via `useApprovedReviews`
+  - Sorted by newest first (by `createdAt` descending)
+  - Rating summary at top: average rating (X.X / 5), total count, star visualization
+  - Grid layout: 3 columns desktop, 2 tablet, 1 mobile
+  - Each card: customer name, profession (if available), star rating, review text, review date
+  - "Load More" button showing 12 reviews at a time
+  - Fully responsive
+- New route `/reviews` in App.tsx pointing to ReviewsPage
+- "View All Reviews" button on LandingPage below the carousel
 
 ### Modify
-- Customer subscription flow to use template IDs instead of enum.
-- Admin sidebar to include new "Subscription Plans" nav item.
+- `LandingPage.tsx`: limit carousel to latest 8 approved reviews (sort by newest); add "View All Reviews" button directly below the carousel section
+- `Navigation.tsx`: add "Reviews" link in both desktop and mobile nav (no auth required)
+- `App.tsx`: register `/reviews` route
 
 ### Remove
-- Hardcoded plan cards from the customer Subscriptions page.
+- Nothing removed
 
 ## Implementation Plan
-1. Generate updated Motoko backend with `SubscriptionPlanTemplate` entity and all CRUD + subscribe endpoints, plus seed data.
-2. Build Admin "Subscription Plans" management UI: table of plans, add/edit form with all fields (name, duration type, salad count, price, delivery frequency, feature bullet points, badge, active toggle), delete with confirm.
-3. Update customer Subscriptions page to fetch and render plans dynamically from the backend.
+1. Create `ReviewsPage.tsx` with rating summary, sorted grid, load-more pagination
+2. Register `/reviews` route in App.tsx, import ReviewsPage
+3. Update LandingPage.tsx: sort carousel reviews by newest 8; add "View All Reviews" button below carousel
+4. Update Navigation.tsx: add Reviews link to navLinks array (authOnly: false)

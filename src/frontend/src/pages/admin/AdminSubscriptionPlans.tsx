@@ -66,7 +66,7 @@ export interface SubscriptionPlanTemplate {
   id: bigint;
   name: string;
   durationType: DurationType;
-  saladCount: bigint;
+  saladCount: number;
   price: number;
   deliveryFrequency: DeliveryFrequency;
   features: string[];
@@ -127,7 +127,7 @@ export default function AdminSubscriptionPlans() {
     setForm({
       name: plan.name,
       durationType: plan.durationType,
-      saladCount: String(plan.saladCount),
+      saladCount: String(Number(plan.saladCount)),
       price: String(plan.price),
       deliveryFrequency: plan.deliveryFrequency,
       badge: plan.badge ?? "",

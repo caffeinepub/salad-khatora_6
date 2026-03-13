@@ -11,6 +11,7 @@ import MenuPage from "@/pages/MenuPage";
 import OrderConfirmationPage from "@/pages/OrderConfirmationPage";
 import OrdersPage from "@/pages/OrdersPage";
 import ProfilePage from "@/pages/ProfilePage";
+import ReviewsPage from "@/pages/ReviewsPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
 import AdminCoupons from "@/pages/admin/AdminCoupons";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
@@ -95,6 +96,12 @@ const orderConfirmationRoute = createRoute({
   component: OrderConfirmationPage,
 });
 
+const reviewsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reviews",
+  component: ReviewsPage,
+});
+
 // Admin layout route (nested under root)
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -177,6 +184,7 @@ const routeTree = rootRoute.addChildren([
   kioskRoute,
   checkoutRoute,
   orderConfirmationRoute,
+  reviewsRoute,
   adminLayoutRoute.addChildren([
     adminDashboardRoute,
     adminOrdersRoute,

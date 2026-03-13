@@ -230,9 +230,45 @@ export function useActiveSubscriptionPlanTemplates() {
     queryFn: async () => {
       if (!actor) return [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any).getActiveSubscriptionPlanTemplates();
+      const raw: any[] = await (
+        actor as any
+      ).getActiveSubscriptionPlanTemplates();
+      // Normalize Candid variant objects ({ weekly: null }) to plain strings
+      return raw.map((p) => {
+        let durationType = "weekly";
+        if (p.durationType) {
+          if (typeof p.durationType === "string") durationType = p.durationType;
+          else if ("monthly" in p.durationType) durationType = "monthly";
+          else durationType = "weekly";
+        }
+        let deliveryFrequency = "daily";
+        if (p.deliveryFrequency) {
+          if (typeof p.deliveryFrequency === "string")
+            deliveryFrequency = p.deliveryFrequency;
+          else if ("weekly" in p.deliveryFrequency)
+            deliveryFrequency = "weekly";
+          else deliveryFrequency = "daily";
+        }
+        return {
+          ...p,
+          saladCount:
+            typeof p.saladCount === "bigint"
+              ? Number(p.saladCount)
+              : Number(p.saladCount ?? 0),
+          price: typeof p.price === "number" ? p.price : Number(p.price ?? 0),
+          badge: Array.isArray(p.badge)
+            ? p.badge.length > 0
+              ? p.badge[0]
+              : undefined
+            : (p.badge ?? undefined),
+          features: Array.isArray(p.features) ? p.features : [],
+          durationType,
+          deliveryFrequency,
+        } as SubscriptionPlanTemplate;
+      });
     },
     enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
   });
 }
 

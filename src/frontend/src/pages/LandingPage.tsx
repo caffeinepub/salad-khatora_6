@@ -512,14 +512,17 @@ export default function LandingPage() {
             const hasLiveReviews =
               approvedReviews && approvedReviews.length > 0;
             const reviewCards = hasLiveReviews
-              ? approvedReviews.slice(0, 6).map((r) => ({
-                  key: r.id.toString(),
-                  rating: Number(r.rating),
-                  text: r.reviewText,
-                  name: r.reviewerName,
-                  role: r.profession ?? "",
-                  date: formatReviewDate(r.createdAt),
-                }))
+              ? [...approvedReviews]
+                  .sort((a, b) => Number(b.createdAt - a.createdAt))
+                  .slice(0, 8)
+                  .map((r) => ({
+                    key: r.id.toString(),
+                    rating: Number(r.rating),
+                    text: r.reviewText,
+                    name: r.reviewerName,
+                    role: r.profession ?? "",
+                    date: formatReviewDate(r.createdAt),
+                  }))
               : testimonials.map((t, i) => ({
                   key: `static-${i}`,
                   rating: t.rating,
@@ -530,63 +533,75 @@ export default function LandingPage() {
                 }));
 
             return (
-              <div className="relative px-10">
-                <Carousel
-                  opts={{ loop: true, align: "start" }}
-                  setApi={setCarouselApi}
-                >
-                  <CarouselContent>
-                    {reviewCards.map((card) => (
-                      <CarouselItem
-                        key={card.key}
-                        className="basis-full md:basis-1/3"
-                      >
-                        <div className="bg-white rounded-2xl p-6 border border-border card-hover h-full flex flex-col">
-                          <div className="flex items-center gap-0.5 mb-4">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star
-                                key={s}
-                                className={`h-4 w-4 ${
-                                  s <= card.rating
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "fill-muted text-muted-foreground/20"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-foreground mb-4 leading-relaxed flex-1">
-                            &ldquo;{card.text}&rdquo;
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-                                {card.name[0]?.toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm text-foreground">
-                                  {card.name}
-                                </p>
-                                {card.role && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {card.role}
-                                  </p>
-                                )}
-                              </div>
+              <>
+                <div className="relative px-10">
+                  <Carousel
+                    opts={{ loop: true, align: "start" }}
+                    setApi={setCarouselApi}
+                  >
+                    <CarouselContent>
+                      {reviewCards.map((card) => (
+                        <CarouselItem
+                          key={card.key}
+                          className="basis-full md:basis-1/3"
+                        >
+                          <div className="bg-white rounded-2xl p-6 border border-border card-hover h-full flex flex-col">
+                            <div className="flex items-center gap-0.5 mb-4">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`h-4 w-4 ${
+                                    s <= card.rating
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "fill-muted text-muted-foreground/20"
+                                  }`}
+                                />
+                              ))}
                             </div>
-                            {card.date && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {card.date}
-                              </span>
-                            )}
+                            <p className="text-foreground mb-4 leading-relaxed flex-1">
+                              &ldquo;{card.text}&rdquo;
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                                  {card.name[0]?.toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-sm text-foreground">
+                                    {card.name}
+                                  </p>
+                                  {card.role && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {card.role}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {card.date && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {card.date}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
-                  <CarouselNext className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
-                </Carousel>
-              </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
+                    <CarouselNext className="border-border hover:bg-primary hover:text-white hover:border-primary transition-colors" />
+                  </Carousel>
+                </div>
+                <div className="flex justify-center mt-8">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="border-primary text-primary hover:bg-primary hover:text-white transition-colors"
+                    data-ocid="landing.view_all_reviews_button"
+                  >
+                    <Link to="/reviews">View All Reviews →</Link>
+                  </Button>
+                </div>
+              </>
             );
           })()
         )}

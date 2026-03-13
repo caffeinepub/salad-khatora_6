@@ -26,9 +26,6 @@ export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const { data: isAdmin } = useIsCallerAdmin();
-  // Show Admin tab when backend confirms admin OR when the principal is in
-  // the localStorage cache (so the tab appears instantly on page reload
-  // without waiting for a backend round-trip).
   const currentPrincipal = identity?.getPrincipal().toString() ?? "";
   const cachedAdmins: string[] = (() => {
     try {
@@ -45,6 +42,12 @@ export default function Navigation() {
   const navLinks = [
     { to: "/", label: "Home", ocid: "nav.home_link", authOnly: false },
     { to: "/menu", label: "Menu", ocid: "nav.menu_link", authOnly: false },
+    {
+      to: "/reviews",
+      label: "Reviews",
+      ocid: "nav.reviews_link",
+      authOnly: false,
+    },
     {
       to: "/orders",
       label: "My Orders",
