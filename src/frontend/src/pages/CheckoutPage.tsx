@@ -483,6 +483,18 @@ export default function CheckoutPage() {
       unitPrice: Number(item.unitPrice) || 0,
     }));
 
+    // Collect custom bowl configs so admins can see what was ordered
+    const customBowlDetails = items
+      .filter((item) => item.customBowlConfig)
+      .map((item) => ({
+        name: item.name,
+        base: item.customBowlConfig!.base,
+        vegetables: item.customBowlConfig!.vegetables,
+        protein: item.customBowlConfig!.protein,
+        dressing: item.customBowlConfig!.dressing,
+        price: item.unitPrice,
+      }));
+
     const addressNote = JSON.stringify({
       deliveryAddress: {
         fullName: selectedAddress.fullName,
@@ -496,6 +508,7 @@ export default function CheckoutPage() {
       paymentMethod,
       couponCode: appliedCouponCode || null,
       notes: notes.trim() || null,
+      customBowls: customBowlDetails.length > 0 ? customBowlDetails : undefined,
     });
 
     try {

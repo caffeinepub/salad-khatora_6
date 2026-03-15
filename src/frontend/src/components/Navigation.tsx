@@ -40,31 +40,47 @@ export default function Navigation() {
     (isAdmin === true || cachedAdmins.includes(currentPrincipal));
 
   const navLinks = [
-    { to: "/", label: "Home", ocid: "nav.home_link", authOnly: false },
-    { to: "/menu", label: "Menu", ocid: "nav.menu_link", authOnly: false },
+    {
+      to: "/",
+      label: "Home",
+      ocid: "nav.home_link",
+      authOnly: false,
+      badge: null,
+    },
+    {
+      to: "/menu",
+      label: "Menu",
+      ocid: "nav.menu_link",
+      authOnly: false,
+      badge: null,
+    },
+    {
+      to: "/subscriptions",
+      label: "Subscriptions",
+      ocid: "nav.subscriptions_link",
+      authOnly: false,
+      badge: "New",
+    },
     {
       to: "/reviews",
       label: "Reviews",
       ocid: "nav.reviews_link",
       authOnly: false,
+      badge: null,
     },
     {
       to: "/orders",
       label: "My Orders",
       ocid: "nav.orders_link",
       authOnly: true,
+      badge: null,
     },
     {
       to: "/profile",
       label: "Profile",
       ocid: "nav.profile_link",
       authOnly: true,
-    },
-    {
-      to: "/subscriptions",
-      label: "Subscriptions",
-      ocid: "nav.subscriptions_link",
-      authOnly: true,
+      badge: null,
     },
   ].filter((link) => !link.authOnly || isAuthenticated);
 
@@ -95,13 +111,20 @@ export default function Navigation() {
                 key={link.to}
                 to={link.to}
                 data-ocid={link.ocid}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                   isActive(link.to)
                     ? "bg-primary text-white"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : link.to === "/subscriptions"
+                      ? "text-primary/80 hover:bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
                 {link.label}
+                {link.badge && (
+                  <Badge className="ml-1 text-[10px] px-1.5 py-0 h-4 bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                    {link.badge}
+                  </Badge>
+                )}
               </Link>
             ))}
             {showAdmin && (
@@ -205,13 +228,20 @@ export default function Navigation() {
                     to={link.to}
                     data-ocid={link.ocid}
                     onClick={() => setMobileOpen(false)}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-1 ${
                       isActive(link.to)
                         ? "bg-primary text-white"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        : link.to === "/subscriptions"
+                          ? "text-primary/80 hover:bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                   >
                     {link.label}
+                    {link.badge && (
+                      <Badge className="ml-1 text-[10px] px-1.5 py-0 h-4 bg-primary/20 text-primary border border-primary/30">
+                        {link.badge}
+                      </Badge>
+                    )}
                   </Link>
                 ))}
                 {showAdmin && (

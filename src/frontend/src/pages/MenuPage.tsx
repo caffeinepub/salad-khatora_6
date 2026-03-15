@@ -1,4 +1,5 @@
 import type { MenuItem } from "@/backend";
+import BuildYourBowlModal from "@/components/BuildYourBowlModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useAllMenuItems } from "@/hooks/useQueries";
 import {
   Check,
+  ChefHat,
   Flame,
   Leaf,
   Search,
@@ -135,7 +137,8 @@ const FALLBACK_ITEMS: MenuItem[] = [
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ] as any;
 
-const PLACEHOLDER_IMAGE = "/assets/generated/placeholder-salad.dim_600x400.png";
+const PLACEHOLDER_IMAGE =
+  "/assets/generated/default-food-transparent.dim_600x400.png";
 
 const CATEGORY_IMAGES: Record<string, string> = {
   Vegetarian: "/assets/generated/salad-garden.dim_600x400.jpg",
@@ -146,10 +149,11 @@ const CATEGORY_IMAGES: Record<string, string> = {
   Seasonal: "/assets/generated/salad-garden.dim_600x400.jpg",
 };
 
-// Safely unwrap ICP Option<string> OR plain string image URL
 function resolveImageUrl(raw: unknown): string {
   if (!raw) return "";
-  // ICP Option type: { __kind__: "Some", value: "..." }
+  if (Array.isArray(raw)) {
+    return raw.length > 0 && typeof raw[0] === "string" ? raw[0] : "";
+  }
   if (typeof raw === "object" && raw !== null) {
     const opt = raw as { __kind__?: string; value?: unknown };
     if (opt.__kind__ === "Some" && typeof opt.value === "string")
@@ -205,7 +209,7 @@ function MenuItemCard({
           loading="lazy"
           onError={(e) => {
             const target = e.currentTarget;
-            if (target.src !== window.location.origin + PLACEHOLDER_IMAGE) {
+            if (!target.src.includes("default-food")) {
               target.src = PLACEHOLDER_IMAGE;
             }
           }}
@@ -232,51 +236,42 @@ function MenuItemCard({
         <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-4">
           {item.description}
         </p>
-
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
-            <Flame className="h-3 w-3 text-orange-500" />
-            {itemCalories.toString()} kcal
-          </div>
-          {itemProtein > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
-              <Leaf className="h-3 w-3 text-blue-500" />
-              {itemProtein.toFixed(0)}g protein
-            </div>
-          )}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+        {itemProtein > 0 && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1 w-fit mb-3">
             <Leaf className="h-3 w-3 text-primary" />
-            Fresh daily
+            {itemProtein.toFixed(0)}g protein
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center justify-between gap-3">
+        {/* Price row with calories badge bottom-right */}
+        <div className="flex items-center justify-between gap-3 mt-auto">
           <span className="font-display font-bold text-2xl text-primary">
             ₹{itemPrice.toLocaleString("en-IN")}
           </span>
-          <Button
-            size="sm"
-            onClick={() => onAdd(item)}
-            disabled={!itemIsActive || isAdded}
-            className={`gap-2 transition-all duration-300 ${
-              isAdded
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : "bg-primary hover:bg-primary/90 text-white"
-            }`}
-            data-ocid={`menu.add_button.${index + 1}`}
-          >
-            {isAdded ? (
-              <>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+              <Flame className="h-3 w-3 text-orange-500" />
+              {itemCalories} kcal
+            </div>
+            <Button
+              size="sm"
+              onClick={() => onAdd(item)}
+              disabled={!itemIsActive || isAdded}
+              className={`gap-1.5 transition-all duration-300 ${
+                isAdded
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                  : "bg-primary hover:bg-primary/90 text-white"
+              }`}
+              data-ocid={`menu.add_button.${index + 1}`}
+            >
+              {isAdded ? (
                 <Check className="h-4 w-4" />
-                Added
-              </>
-            ) : (
-              <>
+              ) : (
                 <ShoppingCart className="h-4 w-4" />
-                Add
-              </>
-            )}
-          </Button>
+              )}
+              {isAdded ? "Added" : "Add"}
+            </Button>
+          </div>
         </div>
       </div>
     </motion.article>
@@ -312,8 +307,8 @@ export default function MenuPage() {
   const { addItem, items: cartItems } = useCart();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [buildBowlOpen, setBuildBowlOpen] = useState(false);
 
-  // Only show active/available items to customers
   const allItems =
     menuItems && menuItems.length > 0 ? menuItems : FALLBACK_ITEMS;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -392,9 +387,19 @@ export default function MenuPage() {
             <h1 className="font-display text-4xl font-bold text-foreground mb-2">
               Our Menu
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-5">
               Handcrafted salads made fresh every day
             </p>
+            {/* Build Your Bowl CTA */}
+            <Button
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary hover:text-white gap-2 font-medium"
+              onClick={() => setBuildBowlOpen(true)}
+              data-ocid="menu.build_bowl_button"
+            >
+              <ChefHat className="h-4 w-4" />
+              Build Your Bowl
+            </Button>
           </motion.div>
         </div>
       </section>
@@ -480,6 +485,11 @@ export default function MenuPage() {
           )}
         </div>
       </div>
+
+      <BuildYourBowlModal
+        open={buildBowlOpen}
+        onOpenChange={setBuildBowlOpen}
+      />
     </main>
   );
 }

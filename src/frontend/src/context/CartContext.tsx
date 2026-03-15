@@ -6,11 +6,19 @@ import {
   useState,
 } from "react";
 
+export interface CustomBowlConfig {
+  base: string;
+  vegetables: string[];
+  protein: string;
+  dressing: string;
+}
+
 export interface CartItem {
   menuItemId: bigint;
   name: string;
   unitPrice: number;
   quantity: number;
+  customBowlConfig?: CustomBowlConfig;
 }
 
 interface CartContextValue {
@@ -30,6 +38,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
     setItems((prev) => {
+      // Custom bowls always get a unique ID so each bowl is tracked separately
+      if (item.customBowlConfig) {
+        const uniqueId = BigInt(-Date.now());
+        return [...prev, { ...item, menuItemId: uniqueId, quantity: 1 }];
+      }
       const existing = prev.find((i) => i.menuItemId === item.menuItemId);
       if (existing) {
         return prev.map((i) =>

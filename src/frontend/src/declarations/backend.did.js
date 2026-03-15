@@ -286,7 +286,45 @@ export const idlService = IDL.Service({
 
 export const idlInitArgs = [];
 
+export const DurationType = IDL.Variant({
+  'weekly' : IDL.Null,
+  'monthly' : IDL.Null,
+});
+export const DeliveryFrequency = IDL.Variant({
+  'daily' : IDL.Null,
+  'weekly' : IDL.Null,
+});
+export const SubscriptionPlanTemplate = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'durationType' : DurationType,
+  'saladCount' : IDL.Nat,
+  'price' : IDL.Float64,
+  'deliveryFrequency' : DeliveryFrequency,
+  'features' : IDL.Vec(IDL.Text),
+  'badge' : IDL.Opt(IDL.Text),
+  'active' : IDL.Bool,
+});
 export const idlFactory = ({ IDL }) => {
+    const DurationType = IDL.Variant({
+      'weekly' : IDL.Null,
+      'monthly' : IDL.Null,
+    });
+    const DeliveryFrequency = IDL.Variant({
+      'daily' : IDL.Null,
+      'weekly' : IDL.Null,
+    });
+    const SubscriptionPlanTemplate = IDL.Record({
+      'id' : IDL.Nat,
+      'name' : IDL.Text,
+      'durationType' : DurationType,
+      'saladCount' : IDL.Nat,
+      'price' : IDL.Float64,
+      'deliveryFrequency' : DeliveryFrequency,
+      'features' : IDL.Vec(IDL.Text),
+      'badge' : IDL.Opt(IDL.Text),
+      'active' : IDL.Bool,
+    });
   const CouponDiscountType = IDL.Variant({
     'fixed' : IDL.Null,
     'percentage' : IDL.Null,
@@ -569,6 +607,20 @@ export const idlFactory = ({ IDL }) => {
     'updateIngredient' : IDL.Func([IngredientItem], [], []),
     'updateMenuItem' : IDL.Func([MenuItem], [], []),
     'updateOrderStatus' : IDL.Func([IDL.Nat, OrderStatus], [], []),
+    'createSubscriptionPlanTemplate' : IDL.Func(
+        [IDL.Text, DurationType, IDL.Nat, IDL.Float64, DeliveryFrequency, IDL.Vec(IDL.Text), IDL.Opt(IDL.Text)],
+        [IDL.Nat],
+        [],
+      ),
+    'updateSubscriptionPlanTemplate' : IDL.Func(
+        [IDL.Nat, IDL.Text, DurationType, IDL.Nat, IDL.Float64, DeliveryFrequency, IDL.Vec(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+        [],
+        [],
+      ),
+    'deleteSubscriptionPlanTemplate' : IDL.Func([IDL.Nat], [], []),
+    'toggleSubscriptionPlanTemplateStatus' : IDL.Func([IDL.Nat], [], []),
+    'getAllSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
+    'getActiveSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
   });
 };
 

@@ -170,32 +170,37 @@ export default function AdminSubscriptionPlans() {
 
     const badge = form.badge.trim() || null;
 
-    if (editingPlan) {
-      await updateMutation.mutateAsync({
-        id: editingPlan.id,
-        name: form.name.trim(),
-        durationType: form.durationType,
-        saladCount: BigInt(saladCount),
-        price,
-        deliveryFrequency: form.deliveryFrequency,
-        features: form.features,
-        badge,
-        active: form.active,
-      });
-      toast.success("Plan updated successfully");
-    } else {
-      await createMutation.mutateAsync({
-        name: form.name.trim(),
-        durationType: form.durationType,
-        saladCount: BigInt(saladCount),
-        price,
-        deliveryFrequency: form.deliveryFrequency,
-        features: form.features,
-        badge,
-      });
-      toast.success("Plan created successfully");
+    try {
+      if (editingPlan) {
+        await updateMutation.mutateAsync({
+          id: editingPlan.id,
+          name: form.name.trim(),
+          durationType: form.durationType,
+          saladCount: BigInt(saladCount),
+          price,
+          deliveryFrequency: form.deliveryFrequency,
+          features: form.features,
+          badge,
+          active: form.active,
+        });
+        toast.success("Plan updated successfully");
+      } else {
+        await createMutation.mutateAsync({
+          name: form.name.trim(),
+          durationType: form.durationType,
+          saladCount: BigInt(saladCount),
+          price,
+          deliveryFrequency: form.deliveryFrequency,
+          features: form.features,
+          badge,
+        });
+        toast.success("Plan created successfully");
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      console.error("Plan save failed:", err);
+      toast.error("Failed to create subscription plan. Please try again.");
     }
-    setDialogOpen(false);
   }
 
   async function handleDelete() {

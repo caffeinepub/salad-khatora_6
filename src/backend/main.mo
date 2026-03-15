@@ -950,6 +950,7 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized");
     };
+    seedPlanTemplates();
     switch (subscriptionPlanTemplates.get(id)) {
       case (null) { Runtime.trap("Plan not found") };
       case (?_) {
@@ -970,6 +971,7 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized");
     };
+    seedPlanTemplates();
     switch (subscriptionPlanTemplates.get(id)) {
       case (null) { Runtime.trap("Plan not found") };
       case (?t) {

@@ -49,6 +49,21 @@ export interface DeliveryRider {
   'available' : boolean,
   'phone' : string,
 }
+export type DurationType = { 'weekly' : null } |
+  { 'monthly' : null };
+export type DeliveryFrequency = { 'daily' : null } |
+  { 'weekly' : null };
+export interface SubscriptionPlanTemplate {
+  'id' : bigint,
+  'name' : string,
+  'durationType' : DurationType,
+  'saladCount' : bigint,
+  'price' : number,
+  'deliveryFrequency' : DeliveryFrequency,
+  'features' : Array<string>,
+  'badge' : [] | [string],
+  'active' : boolean,
+}
 export interface IngredientItem {
   'id' : bigint,
   'lowStockThreshold' : bigint,
@@ -243,6 +258,12 @@ export interface _SERVICE {
   'updateIngredient' : ActorMethod<[IngredientItem], undefined>,
   'updateMenuItem' : ActorMethod<[MenuItem], undefined>,
   'updateOrderStatus' : ActorMethod<[bigint, OrderStatus], undefined>,
+  'createSubscriptionPlanTemplate' : ActorMethod<[string, DurationType, bigint, number, DeliveryFrequency, Array<string>, [] | [string]], bigint>,
+  'updateSubscriptionPlanTemplate' : ActorMethod<[bigint, string, DurationType, bigint, number, DeliveryFrequency, Array<string>, [] | [string], boolean], undefined>,
+  'deleteSubscriptionPlanTemplate' : ActorMethod<[bigint], undefined>,
+  'toggleSubscriptionPlanTemplateStatus' : ActorMethod<[bigint], undefined>,
+  'getAllSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
+  'getActiveSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

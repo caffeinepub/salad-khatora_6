@@ -223,6 +223,26 @@ export enum ReviewStatus {
     approved = "approved",
     rejected = "rejected"
 }
+
+export enum DurationType {
+    weekly = "weekly",
+    monthly = "monthly"
+}
+export enum DeliveryFrequency {
+    daily = "daily",
+    weekly = "weekly"
+}
+export interface SubscriptionPlanTemplate {
+    id: bigint;
+    name: string;
+    durationType: DurationType;
+    saladCount: bigint;
+    price: number;
+    deliveryFrequency: DeliveryFrequency;
+    features: Array<string>;
+    badge?: string;
+    active: boolean;
+}
 export enum SubscriptionPlan {
     monthly = "monthly",
     weekly = "weekly"
@@ -1209,6 +1229,74 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+
+    async getAllSubscriptionPlanTemplates(): Promise<Array<SubscriptionPlanTemplate>> {
+        try {
+            const result = await (this.actor as any).getAllSubscriptionPlanTemplates();
+            return (result as any[]).map(normalizePlanTemplateFromCandid);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+    async getActiveSubscriptionPlanTemplates(): Promise<Array<SubscriptionPlanTemplate>> {
+        try {
+            const result = await (this.actor as any).getActiveSubscriptionPlanTemplates();
+            return (result as any[]).map(normalizePlanTemplateFromCandid);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+    async createSubscriptionPlanTemplate(name: string, durationType: DurationType, saladCount: bigint, price: number, deliveryFrequency: DeliveryFrequency, features: Array<string>, badge: string | null): Promise<bigint> {
+        try {
+            const result = await (this.actor as any).createSubscriptionPlanTemplate(
+                name,
+                toCandidDurationType(durationType),
+                saladCount,
+                price,
+                toCandidDeliveryFrequency(deliveryFrequency),
+                features,
+                badge ? [badge] : []
+            );
+            return result as bigint;
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+    async updateSubscriptionPlanTemplate(id: bigint, name: string, durationType: DurationType, saladCount: bigint, price: number, deliveryFrequency: DeliveryFrequency, features: Array<string>, badge: string | null, active: boolean): Promise<void> {
+        try {
+            await (this.actor as any).updateSubscriptionPlanTemplate(
+                id, name,
+                toCandidDurationType(durationType),
+                saladCount, price,
+                toCandidDeliveryFrequency(deliveryFrequency),
+                features,
+                badge ? [badge] : [],
+                active
+            );
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+    async deleteSubscriptionPlanTemplate(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).deleteSubscriptionPlanTemplate(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+    async toggleSubscriptionPlanTemplateStatus(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).toggleSubscriptionPlanTemplateStatus(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
     async updateOrderStatus(arg0: bigint, arg1: OrderStatus): Promise<void> {
         if (this.processError) {
             try {
@@ -1852,4 +1940,34 @@ export function createActor(canisterId: string, _uploadFile: (file: ExternalBlob
         ...options.actorOptions
     });
     return new Backend(actor, _uploadFile, _downloadFile, options.processError);
+}
+
+function toCandidDurationType(v: DurationType): object {
+    return v === DurationType.monthly ? { monthly: null } : { weekly: null };
+}
+function toCandidDeliveryFrequency(v: DeliveryFrequency): object {
+    return v === DeliveryFrequency.weekly ? { weekly: null } : { daily: null };
+}
+function normalizePlanTemplateFromCandid(p: any): SubscriptionPlanTemplate {
+    let durationType = DurationType.weekly;
+    if (p.durationType) {
+        if (typeof p.durationType === "string") durationType = p.durationType as DurationType;
+        else if ("monthly" in p.durationType) durationType = DurationType.monthly;
+    }
+    let deliveryFrequency = DeliveryFrequency.daily;
+    if (p.deliveryFrequency) {
+        if (typeof p.deliveryFrequency === "string") deliveryFrequency = p.deliveryFrequency as DeliveryFrequency;
+        else if ("weekly" in p.deliveryFrequency) deliveryFrequency = DeliveryFrequency.weekly;
+    }
+    return {
+        id: p.id,
+        name: p.name,
+        durationType,
+        saladCount: typeof p.saladCount === "bigint" ? p.saladCount : BigInt(p.saladCount ?? 0),
+        price: typeof p.price === "number" ? p.price : Number(p.price ?? 0),
+        deliveryFrequency,
+        features: Array.isArray(p.features) ? p.features : [],
+        badge: Array.isArray(p.badge) ? (p.badge.length > 0 ? p.badge[0] : undefined) : (p.badge || undefined),
+        active: !!p.active,
+    };
 }

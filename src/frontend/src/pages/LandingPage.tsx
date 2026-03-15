@@ -1,3 +1,4 @@
+import BuildYourBowlModal from "@/components/BuildYourBowlModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,14 +15,16 @@ import { useApprovedReviews } from "@/hooks/useReviewQueries";
 import { getOrderFrequency } from "@/utils/orderFrequency";
 import { Link } from "@tanstack/react-router";
 import {
+  Apple,
   Clock,
   Flame,
   Heart,
   Leaf,
   Shield,
   ShoppingBag,
+  Sprout,
   Star,
-  Zap,
+  UtensilsCrossed,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +32,9 @@ import { useCallback, useEffect, useState } from "react";
 // Safely unwrap ICP Option<string> OR plain string image URL
 function resolveImageUrl(raw: unknown): string {
   if (!raw) return "";
+  if (Array.isArray(raw)) {
+    return raw.length > 0 && typeof raw[0] === "string" ? raw[0] : "";
+  }
   if (typeof raw === "object" && raw !== null) {
     const opt = raw as { __kind__?: string; value?: unknown };
     if (opt.__kind__ === "Some" && typeof opt.value === "string")
@@ -39,6 +45,9 @@ function resolveImageUrl(raw: unknown): string {
   return "";
 }
 
+const DEFAULT_FOOD_IMG =
+  "/assets/generated/default-food-transparent.dim_600x400.png";
+
 const features = [
   {
     icon: Leaf,
@@ -47,10 +56,10 @@ const features = [
       "Sourced daily from local farms. Every leaf, every vegetable, picked at peak freshness.",
   },
   {
-    icon: Zap,
-    title: "Custom Orders",
+    icon: UtensilsCrossed,
+    title: "Customizable Bowls",
     description:
-      "Build your perfect bowl. Choose your base, toppings, dressings, and protein.",
+      "Build your perfect bowl. Choose your base, toppings, dressings, and protein — live calorie updates.",
   },
   {
     icon: Heart,
@@ -60,11 +69,27 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: "50+", label: "Fresh Items" },
-  { value: "10k+", label: "Happy Customers" },
-  { value: "4.9★", label: "Average Rating" },
-  { value: "30min", label: "Avg Delivery" },
+const valueCards = [
+  {
+    icon: Leaf,
+    label: "Fresh Ingredients",
+    desc: "Sourced daily from local farms",
+  },
+  {
+    icon: Heart,
+    label: "Healthy Meals",
+    desc: "Balanced nutrition in every bowl",
+  },
+  {
+    icon: Apple,
+    label: "Nutrition Focused",
+    desc: "Track calories & macros",
+  },
+  {
+    icon: Clock,
+    label: "Quick Delivery",
+    desc: "Fast delivery to your door",
+  },
 ];
 
 const testimonials = [
@@ -102,6 +127,7 @@ export default function LandingPage() {
   const freq = getOrderFrequency();
   const { data: approvedReviews, isLoading: reviewsLoading } =
     useApprovedReviews();
+  const [buildBowlOpen, setBuildBowlOpen] = useState(false);
 
   // Carousel auto-scroll
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
@@ -135,35 +161,38 @@ export default function LandingPage() {
                 🥗 Your City's Freshest Salad Bar
               </Badge>
               <h1 className="font-display text-5xl md:text-6xl font-bold leading-[1.1] mb-6 text-balance">
-                Eat Fresh. <span className="text-green-200">Feel Amazing.</span>
+                Fresh Salads.{" "}
+                <span className="text-green-200">Healthy Daily Meals.</span>
               </h1>
               <p className="text-white/80 text-lg mb-8 leading-relaxed max-w-md">
-                Hand-crafted salads made with seasonal ingredients, delivered
-                fresh in your city. Track your health metrics and build a better
-                you — one bowl at a time.
+                Hand-crafted salads with fresh seasonal ingredients. Build your
+                perfect customizable bowl or choose a subscription meal plan —
+                delivered fresh, every day.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button
-                  asChild
                   size="lg"
                   className="bg-white text-primary hover:bg-white/90 font-semibold shadow-lg gap-2"
-                  data-ocid="landing.browse_menu_button"
+                  onClick={() =>
+                    document
+                      .getElementById("menu-preview")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  data-ocid="landing.order_now_button"
                 >
-                  <Link to="/menu">
-                    <ShoppingBag className="h-5 w-5" />
-                    Browse Menu
-                  </Link>
+                  <ShoppingBag className="h-5 w-5" />
+                  Order Now
                 </Button>
                 <Button
                   asChild
                   size="lg"
                   variant="outline"
-                  className="bg-white text-green-800 border border-green-800 hover:bg-green-800 hover:text-white font-semibold gap-2"
-                  data-ocid="landing.get_started_button"
+                  className="bg-transparent border-white/60 text-white hover:bg-white/10 font-semibold gap-2"
+                  data-ocid="landing.view_menu_button"
                 >
-                  <Link to="/profile">
-                    <Heart className="h-5 w-5" />
-                    Get Started
+                  <Link to="/menu">
+                    <Leaf className="h-5 w-5" />
+                    View Menu
                   </Link>
                 </Button>
               </div>
@@ -187,27 +216,27 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
+            {/* Hero image */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative hidden md:block"
+              className="relative flex items-center justify-center"
             >
-              <div className="relative">
+              <div className="relative w-full">
                 <div className="absolute inset-0 rounded-3xl bg-white/10 blur-3xl transform scale-110" />
                 <img
-                  src="/assets/generated/hero-salad.dim_1200x700.jpg"
+                  src="/assets/generated/hero-salad-bowl.dim_1200x900.jpg"
                   alt="Fresh Salad Bowl"
-                  className="relative rounded-3xl w-full object-cover aspect-[4/3] shadow-2xl ring-1 ring-white/20"
+                  className="relative rounded-3xl w-full max-h-[440px] object-cover aspect-[4/3] shadow-2xl ring-1 ring-white/20"
                   onError={(e) => {
                     const t = e.currentTarget;
-                    if (!t.src.includes("placeholder")) {
-                      t.src =
-                        "/assets/generated/placeholder-salad.dim_600x400.png";
+                    if (!t.src.includes("default-food")) {
+                      t.src = DEFAULT_FOOD_IMG;
                     }
                   }}
                 />
-                {/* Floating badge */}
+                {/* Floating calorie badge */}
                 <motion.div
                   animate={{ y: [-4, 4, -4] }}
                   transition={{
@@ -251,27 +280,131 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Bar */}
-      <section className="bg-primary/5 border-y border-border">
-        <div className="container mx-auto px-4 py-8">
+      {/* Value Cards Bar */}
+      <section className="bg-white border-b border-border">
+        <div className="container mx-auto px-4 py-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="text-center"
+            {valueCards.map((card, i) => {
+              const Icon = card.icon;
+              return (
+                <motion.div
+                  key={card.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-white rounded-2xl p-6 border border-border flex flex-col items-center text-center gap-3 hover:border-primary/30 hover:shadow-sm transition-all"
+                >
+                  <div className="w-12 h-12 rounded-xl border-2 border-primary/20 bg-primary/5 flex items-center justify-center">
+                    <Icon className="h-6 w-6 text-primary" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <p className="font-display font-bold text-foreground text-sm">
+                      {card.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {card.desc}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Build Your Bowl Section */}
+      <section className="bg-primary/5 border-b border-border py-16">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <Badge
+                variant="outline"
+                className="mb-4 border-primary/30 text-primary"
               >
-                <p className="font-display text-3xl font-bold text-primary">
-                  {stat.value}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {stat.label}
-                </p>
-              </motion.div>
-            ))}
+                Customizable
+              </Badge>
+              <h2 className="font-display text-4xl font-bold text-foreground mb-4">
+                Build Your Perfect Bowl
+              </h2>
+              <p className="text-muted-foreground mb-6 leading-relaxed">
+                Choose your base, vegetables, protein, and dressing. See live
+                calorie &amp; price updates as you build.
+              </p>
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 font-semibold gap-2"
+                onClick={() => setBuildBowlOpen(true)}
+                data-ocid="landing.build_bowl_button"
+              >
+                <Sprout className="h-5 w-5" />
+                Start Building
+              </Button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="grid grid-cols-2 gap-4"
+            >
+              {[
+                {
+                  step: "1",
+                  label: "Choose Base",
+                  desc: "Lettuce, Quinoa, Brown Rice",
+                  icon: Leaf,
+                },
+                {
+                  step: "2",
+                  label: "Add Vegetables",
+                  desc: "Up to 4 fresh picks",
+                  icon: Sprout,
+                },
+                {
+                  step: "3",
+                  label: "Pick Protein",
+                  desc: "Paneer, Tofu, Chickpeas & more",
+                  icon: Heart,
+                },
+                {
+                  step: "4",
+                  label: "Select Dressing",
+                  desc: "Tahini, Caesar, Citrus...",
+                  icon: UtensilsCrossed,
+                },
+              ].map((s) => {
+                const Icon = s.icon;
+                return (
+                  <div
+                    key={s.step}
+                    className="bg-white rounded-2xl p-5 border border-border flex flex-col gap-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                        {s.step}
+                      </span>
+                      <Icon
+                        className="h-4 w-4 text-primary"
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">
+                        {s.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {s.desc}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </motion.div>
           </div>
         </div>
       </section>
@@ -313,7 +446,7 @@ export default function LandingPage() {
               >
                 <div className="bg-white rounded-2xl p-8 border border-border card-hover h-full">
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                    <Icon className="h-7 w-7 text-primary" />
+                    <Icon className="h-7 w-7 text-primary" strokeWidth={1.5} />
                   </div>
                   <h3 className="font-display text-xl font-bold mb-3 text-foreground">
                     {feature.title}
@@ -329,7 +462,10 @@ export default function LandingPage() {
       </section>
 
       {/* Menu Preview */}
-      <section className="bg-primary/5 border-y border-border py-20">
+      <section
+        id="menu-preview"
+        className="bg-primary/5 border-y border-border py-20"
+      >
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -362,7 +498,6 @@ export default function LandingPage() {
             data-ocid="landing.fresh_picks.list"
           >
             {topItemsLoading ? (
-              // Loading skeletons — use stable string keys, not array index
               (["sk-a", "sk-b", "sk-c"] as const).map((skKey) => (
                 <div
                   key={skKey}
@@ -401,9 +536,9 @@ export default function LandingPage() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const anyItem = item as any;
                 const rawImageUrl = anyItem.imageUrl ?? anyItem.image;
+                const resolved = resolveImageUrl(rawImageUrl);
                 const imgSrc =
-                  resolveImageUrl(rawImageUrl) ||
-                  "/assets/generated/placeholder-salad.dim_600x400.png";
+                  resolved.length > 0 ? resolved : DEFAULT_FOOD_IMG;
                 const itemPrice = Number(anyItem.price ?? 0);
                 const itemCalories = Number(anyItem.calories ?? 0);
                 const itemCategory: string = anyItem.category ?? "Fresh";
@@ -420,7 +555,7 @@ export default function LandingPage() {
                   >
                     <Link
                       to="/menu"
-                      className="block bg-white rounded-2xl overflow-hidden border border-border card-hover group"
+                      className="block bg-white rounded-2xl overflow-hidden border border-border card-hover group flex flex-col h-full"
                     >
                       <div className="relative overflow-hidden">
                         <img
@@ -430,9 +565,8 @@ export default function LandingPage() {
                           loading="lazy"
                           onError={(e) => {
                             const t = e.currentTarget;
-                            if (!t.src.includes("placeholder")) {
-                              t.src =
-                                "/assets/generated/placeholder-salad.dim_600x400.png";
+                            if (!t.src.includes("default-food")) {
+                              t.src = DEFAULT_FOOD_IMG;
                             }
                           }}
                         />
@@ -446,10 +580,11 @@ export default function LandingPage() {
                           </div>
                         )}
                       </div>
-                      <div className="p-5">
+                      <div className="p-5 flex flex-col flex-1">
                         <h3 className="font-display font-bold text-lg text-foreground mb-1 line-clamp-1">
                           {item.name}
                         </h3>
+                        <div className="flex-1" />
                         <div className="flex justify-between items-center mt-3">
                           <span className="text-primary font-bold text-xl font-display">
                             ₹{itemPrice.toFixed(0)}
@@ -508,7 +643,6 @@ export default function LandingPage() {
           </div>
         ) : (
           (() => {
-            // Use approved reviews if available, fall back to static testimonials
             const hasLiveReviews =
               approvedReviews && approvedReviews.length > 0;
             const reviewCards = hasLiveReviews
@@ -627,7 +761,7 @@ export default function LandingPage() {
                 asChild
                 size="lg"
                 className="bg-white text-primary hover:bg-white/90 font-semibold gap-2"
-                data-ocid="landing.browse_menu_button"
+                data-ocid="landing.cta_order_button"
               >
                 <Link to="/menu">
                   <ShoppingBag className="h-5 w-5" />
@@ -640,9 +774,9 @@ export default function LandingPage() {
                 variant="outline"
                 className="border-white/50 text-white hover:bg-white/10 font-semibold gap-2"
               >
-                <Link to="/profile">
+                <Link to="/subscriptions">
                   <Clock className="h-5 w-5" />
-                  Set Up Profile
+                  View Meal Plans
                 </Link>
               </Button>
             </div>
@@ -679,6 +813,11 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <BuildYourBowlModal
+        open={buildBowlOpen}
+        onOpenChange={setBuildBowlOpen}
+      />
     </main>
   );
 }

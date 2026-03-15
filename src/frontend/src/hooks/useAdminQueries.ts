@@ -756,17 +756,6 @@ export function useIsCallerAdmin() {
 
 // ─── Admin: Subscription Plan Templates ───────────────────────────────────────
 
-// Helper: convert string variant to Candid variant object for backend calls
-function toDurationType(v: string): object {
-  if (v === "monthly") return { monthly: null };
-  return { weekly: null };
-}
-
-function toDeliveryFrequency(v: string): object {
-  if (v === "weekly") return { weekly: null };
-  return { daily: null };
-}
-
 // Helper: normalize a plan returned from backend (variants come as { weekly: null } objects)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizePlanTemplate(p: any) {
@@ -808,18 +797,13 @@ export function useAllSubscriptionPlanTemplates() {
     queryKey: ["allSubscriptionPlanTemplates"],
     queryFn: async () => {
       if (!actor) return [];
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const raw: any[] = await (
-          actor as any
-        ).getAllSubscriptionPlanTemplates();
-        return raw.map(normalizePlanTemplate);
-      } catch (err) {
-        console.warn("getAllSubscriptionPlanTemplates failed:", err);
-        return [];
-      }
+      // Use the typed method on the actor - the method now exists in Backend class
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw: any[] = await (actor as any).getAllSubscriptionPlanTemplates();
+      return raw.map(normalizePlanTemplate);
     },
     enabled: !!actor && !isFetching,
+    retry: 2,
   });
 }
 
@@ -837,15 +821,14 @@ export function useCreateSubscriptionPlanTemplate() {
       badge: string | null;
     }) => {
       if (!actor) throw new Error("Not connected");
-      const badge = args.badge ? [args.badge] : [];
       return (actor as any).createSubscriptionPlanTemplate(
         args.name,
-        toDurationType(args.durationType),
+        args.durationType,
         args.saladCount,
         args.price,
-        toDeliveryFrequency(args.deliveryFrequency),
+        args.deliveryFrequency,
         args.features,
-        badge,
+        args.badge,
       );
     },
     onSuccess: () => {
@@ -855,6 +838,9 @@ export function useCreateSubscriptionPlanTemplate() {
       void queryClient.invalidateQueries({
         queryKey: ["activeSubscriptionPlanTemplates"],
       });
+    },
+    onError: (err: unknown) => {
+      console.error("createSubscriptionPlanTemplate failed:", err);
     },
   });
 }
@@ -875,16 +861,15 @@ export function useUpdateSubscriptionPlanTemplate() {
       active: boolean;
     }) => {
       if (!actor) throw new Error("Not connected");
-      const badge = args.badge ? [args.badge] : [];
       return (actor as any).updateSubscriptionPlanTemplate(
         args.id,
         args.name,
-        toDurationType(args.durationType),
+        args.durationType,
         args.saladCount,
         args.price,
-        toDeliveryFrequency(args.deliveryFrequency),
+        args.deliveryFrequency,
         args.features,
-        badge,
+        args.badge,
         args.active,
       );
     },
