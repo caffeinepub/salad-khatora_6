@@ -89,6 +89,26 @@ function truncatePrincipal(p: { toString(): string }) {
   return s.length > 12 ? `${s.slice(0, 8)}…${s.slice(-4)}` : s;
 }
 
+interface CustomBowlOrderDetail {
+  bowlSizeName?: string;
+  ingredients?: Array<{
+    name: string;
+    weightG: number;
+    calories: number;
+    priceRs: number;
+  }>;
+  totalCalories?: number;
+  totalWeight?: number;
+  totalPrice?: number;
+  // legacy fields
+  name?: string;
+  base?: string;
+  vegetables?: string[];
+  protein?: string;
+  dressing?: string;
+  price?: number;
+}
+
 interface ParsedOrderNotes {
   deliveryAddress?: {
     fullName?: string;
@@ -106,6 +126,8 @@ interface ParsedOrderNotes {
   tax?: number;
   discount?: number;
   deliveryCharge?: number;
+  customBowls?: CustomBowlOrderDetail[];
+  customBowl?: CustomBowlOrderDetail;
 }
 
 function parseOrderNotes(notes?: string): ParsedOrderNotes | null {
@@ -1007,6 +1029,112 @@ export default function AdminOrders() {
                         </div>
                       )}
                     </>
+                  );
+                })()}
+
+                {/* Custom Bowl Details */}
+                {(() => {
+                  const parsed = parseOrderNotes(viewOrder.notes);
+                  const bowls: CustomBowlOrderDetail[] = [];
+                  if (parsed?.customBowl) bowls.push(parsed.customBowl);
+                  if (parsed?.customBowls?.length)
+                    bowls.push(...parsed.customBowls);
+                  if (!bowls.length) return null;
+                  return (
+                    <div className="space-y-3">
+                      {bowls.map((bowl, bi) => (
+                        <div
+                          key={`bowl-${bi}-${bowl.bowlSizeName ?? "custom"}`}
+                          className="bg-green-50 rounded-xl p-4 border border-green-100"
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-base">🥗</span>
+                            <p className="text-sm font-bold text-green-800">
+                              Custom Bowl
+                            </p>
+                          </div>
+                          {bowl.bowlSizeName && (
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Size:{" "}
+                              <span className="font-medium text-foreground">
+                                {bowl.bowlSizeName}
+                              </span>
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">
+                            Ingredients
+                          </p>
+                          <ul className="space-y-0.5 mb-3">
+                            {bowl.ingredients?.map((ing) => (
+                              <li
+                                key={ing.name}
+                                className="text-sm text-foreground flex justify-between"
+                              >
+                                <span>
+                                  • {ing.name} ({ing.weightG}g)
+                                </span>
+                                {ing.priceRs > 0 && (
+                                  <span className="text-muted-foreground">
+                                    ₹{ing.priceRs}
+                                  </span>
+                                )}
+                              </li>
+                            )) ?? (
+                              <>
+                                {bowl.base && (
+                                  <li className="text-sm">
+                                    • {bowl.base} (base)
+                                  </li>
+                                )}
+                                {bowl.vegetables?.map((v) => (
+                                  <li key={v} className="text-sm">
+                                    • {v}
+                                  </li>
+                                ))}
+                                {bowl.protein && (
+                                  <li className="text-sm">
+                                    • {bowl.protein} (protein)
+                                  </li>
+                                )}
+                                {bowl.dressing && (
+                                  <li className="text-sm">
+                                    • {bowl.dressing} (dressing)
+                                  </li>
+                                )}
+                              </>
+                            )}
+                          </ul>
+                          <div className="grid grid-cols-3 gap-2 text-xs border-t border-green-200 pt-2">
+                            {bowl.totalWeight != null && (
+                              <div>
+                                <p className="text-muted-foreground">Weight</p>
+                                <p className="font-semibold">
+                                  {bowl.totalWeight}g
+                                </p>
+                              </div>
+                            )}
+                            {bowl.totalCalories != null && (
+                              <div>
+                                <p className="text-muted-foreground">
+                                  Calories
+                                </p>
+                                <p className="font-semibold">
+                                  {bowl.totalCalories} kcal
+                                </p>
+                              </div>
+                            )}
+                            {(bowl.totalPrice ?? bowl.price) != null && (
+                              <div>
+                                <p className="text-muted-foreground">Price</p>
+                                <p className="font-semibold">
+                                  ₹{bowl.totalPrice ?? bowl.price}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   );
                 })()}
 

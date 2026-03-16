@@ -6,124 +6,154 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/context/CartContext";
-import { Check, ChefHat } from "lucide-react";
+import {
+  useBowlIngredientsByCategory,
+  useBowlSizes,
+} from "@/hooks/useAdminQueries";
+import type { BowlIngredient, BowlSize } from "@/types/bowl";
+import { Check, ChefHat, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-interface BowlOption {
-  id: string;
-  label: string;
-  calories: number;
-  price: number;
-}
-
-const BASE_OPTIONS: BowlOption[] = [
-  { id: "romaine", label: "Romaine Lettuce", calories: 0, price: 0 },
-  { id: "quinoa", label: "Quinoa", calories: 80, price: 50 },
-  { id: "brown-rice", label: "Brown Rice", calories: 90, price: 40 },
-];
-
-const VEG_OPTIONS: BowlOption[] = [
-  { id: "cucumber", label: "Cucumber", calories: 10, price: 0 },
-  { id: "tomatoes", label: "Tomatoes", calories: 15, price: 0 },
-  { id: "spinach", label: "Spinach", calories: 7, price: 0 },
-  { id: "red-cabbage", label: "Red Cabbage", calories: 12, price: 0 },
-  { id: "corn", label: "Corn", calories: 25, price: 0 },
-  { id: "bell-peppers", label: "Bell Peppers", calories: 15, price: 0 },
-];
-
-const PROTEIN_OPTIONS: BowlOption[] = [
-  { id: "none", label: "No Protein", calories: 0, price: 0 },
-  { id: "paneer", label: "Paneer", calories: 120, price: 80 },
-  { id: "chickpeas", label: "Chickpeas", calories: 100, price: 60 },
-  { id: "tofu", label: "Tofu", calories: 90, price: 70 },
-  {
-    id: "grilled-chicken",
-    label: "Grilled Chicken",
-    calories: 150,
-    price: 100,
-  },
-];
-
-const DRESSING_OPTIONS: BowlOption[] = [
-  { id: "house", label: "House Dressing", calories: 30, price: 20 },
-  { id: "tahini", label: "Tahini", calories: 45, price: 20 },
-  { id: "caesar", label: "Caesar", calories: 60, price: 20 },
-  { id: "lime-citrus", label: "Lime Citrus", calories: 15, price: 15 },
-  {
-    id: "apple-cider",
-    label: "Apple Cider Vinaigrette",
-    calories: 20,
-    price: 15,
-  },
-];
-
-const BASE_BOWL_CALORIES = 250;
-const BASE_BOWL_PRICE = 299;
+const PLACEHOLDER_IMG = "/assets/default-food.png";
 
 const STEPS = [
+  { title: "Choose Bowl Size", subtitle: "Select the size of your bowl" },
   { title: "Choose Your Base", subtitle: "The foundation of your bowl" },
-  { title: "Pick Your Vegetables", subtitle: "Pick up to 4 vegetables" },
+  { title: "Pick Your Vegetables", subtitle: "Fresh and crunchy additions" },
   { title: "Add Protein", subtitle: "Power up your bowl" },
   { title: "Choose Dressing", subtitle: "The finishing touch" },
 ];
 
-function OptionCard({
-  option,
-  selected,
-  onToggle,
-  showPrice,
-}: {
-  option: BowlOption;
+interface IngredientCardProps {
+  ingredient: BowlIngredient;
   selected: boolean;
+  disabled: boolean;
   onToggle: () => void;
-  showPrice: boolean;
-}) {
+}
+
+function IngredientCard({
+  ingredient,
+  selected,
+  disabled,
+  onToggle,
+}: IngredientCardProps) {
+  const imgSrc = ingredient.imageData ?? PLACEHOLDER_IMG;
   return (
     <button
       type="button"
-      onClick={onToggle}
-      className={`w-full text-left rounded-xl border-2 p-4 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-        selected
-          ? "border-primary bg-primary/5 shadow-sm"
-          : "border-border bg-white hover:border-primary/40 hover:bg-accent/40"
+      onClick={!disabled ? onToggle : undefined}
+      disabled={disabled}
+      className={`w-full text-left rounded-xl border-2 p-3 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+        disabled && !selected
+          ? "opacity-40 cursor-not-allowed border-border bg-muted/30"
+          : selected
+            ? "border-primary bg-primary/5 shadow-sm"
+            : "border-border bg-white hover:border-primary/40 hover:bg-accent/40"
       }`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-              selected ? "border-primary bg-primary" : "border-border bg-white"
-            }`}
-          >
-            {selected && <Check className="h-3 w-3 text-white" />}
-          </div>
-          <span
-            className={`font-medium text-sm ${
-              selected ? "text-primary" : "text-foreground"
-            }`}
-          >
-            {option.label}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {option.calories > 0 && (
-            <span className="text-xs text-muted-foreground">
-              +{option.calories} kcal
-            </span>
-          )}
-          {showPrice && option.price > 0 && (
-            <Badge
-              variant="outline"
-              className="text-xs text-primary border-primary/30 px-2 py-0"
+      <div className="flex items-center gap-3">
+        <img
+          src={imgSrc}
+          alt={ingredient.name}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = PLACEHOLDER_IMG;
+          }}
+          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+          loading="lazy"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                selected
+                  ? "border-primary bg-primary"
+                  : "border-border bg-white"
+              }`}
             >
-              +₹{option.price}
-            </Badge>
-          )}
+              {selected && <Check className="h-2.5 w-2.5 text-white" />}
+            </div>
+            <span
+              className={`font-medium text-sm truncate ${selected ? "text-primary" : "text-foreground"}`}
+            >
+              {ingredient.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-1 pl-6">
+            <span className="text-xs text-muted-foreground">
+              {Number(ingredient.calories)} kcal
+            </span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-muted-foreground">
+              {Number(ingredient.weightG)}g
+            </span>
+            {ingredient.priceRs > 0 && (
+              <Badge
+                variant="outline"
+                className="text-xs text-primary border-primary/30 px-1.5 py-0 ml-auto"
+              >
+                +₹{ingredient.priceRs}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     </button>
+  );
+}
+
+interface SizeSelectorProps {
+  sizes: BowlSize[];
+  selectedId: bigint | null;
+  onSelect: (size: BowlSize) => void;
+}
+
+function SizeSelector({ sizes, selectedId, onSelect }: SizeSelectorProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {sizes
+        .filter((s) => s.isActive)
+        .map((size) => {
+          const sel = selectedId === size.id;
+          return (
+            <button
+              key={size.id.toString()}
+              type="button"
+              onClick={() => onSelect(size)}
+              className={`rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                sel
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/40 hover:bg-accent/40"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-foreground">{size.name}</span>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    sel ? "border-primary bg-primary" : "border-border"
+                  }`}
+                >
+                  {sel && <Check className="h-3 w-3 text-white" />}
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                ₹{size.basePriceRs}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                <div>Base weight: {Number(size.baseWeightG)}g</div>
+                <div>
+                  Up to {Number(size.maxVegetables)} veg ·{" "}
+                  {Number(size.maxProteins)} protein ·{" "}
+                  {Number(size.maxDressings)} dressing
+                </div>
+              </div>
+            </button>
+          );
+        })}
+    </div>
   );
 }
 
@@ -135,263 +165,435 @@ interface Props {
 export default function BuildYourBowlModal({ open, onOpenChange }: Props) {
   const { addItem } = useCart();
   const [step, setStep] = useState(0);
-  const [selectedBase, setSelectedBase] = useState("romaine");
-  const [selectedVegs, setSelectedVegs] = useState<string[]>([]);
-  const [selectedProtein, setSelectedProtein] = useState("none");
-  const [selectedDressing, setSelectedDressing] = useState("house");
+  const [selectedSize, setSelectedSize] = useState<BowlSize | null>(null);
+  const [selectedBase, setSelectedBase] = useState<BowlIngredient | null>(null);
+  const [selectedVegs, setSelectedVegs] = useState<BowlIngredient[]>([]);
+  const [selectedProteins, setSelectedProteins] = useState<BowlIngredient[]>(
+    [],
+  );
+  const [selectedDressings, setSelectedDressings] = useState<BowlIngredient[]>(
+    [],
+  );
 
-  const calcCalories = () => {
-    const base = BASE_OPTIONS.find((o) => o.id === selectedBase);
-    const vegsCal = selectedVegs.reduce((sum, id) => {
-      const v = VEG_OPTIONS.find((o) => o.id === id);
-      return sum + (v?.calories ?? 0);
-    }, 0);
-    const protein = PROTEIN_OPTIONS.find((o) => o.id === selectedProtein);
-    const dressing = DRESSING_OPTIONS.find((o) => o.id === selectedDressing);
-    return (
-      BASE_BOWL_CALORIES +
-      (base?.calories ?? 0) +
-      vegsCal +
-      (protein?.calories ?? 0) +
-      (dressing?.calories ?? 0)
-    );
-  };
+  const { data: sizes, isLoading: sizesLoading } = useBowlSizes();
+  const { data: bases, isLoading: basesLoading } =
+    useBowlIngredientsByCategory("base");
+  const { data: vegs, isLoading: vegsLoading } =
+    useBowlIngredientsByCategory("vegetable");
+  const { data: proteins, isLoading: proteinsLoading } =
+    useBowlIngredientsByCategory("protein");
+  const { data: dressings, isLoading: dressingsLoading } =
+    useBowlIngredientsByCategory("dressing");
 
-  const calcPrice = () => {
-    const base = BASE_OPTIONS.find((o) => o.id === selectedBase);
-    const protein = PROTEIN_OPTIONS.find((o) => o.id === selectedProtein);
-    const dressing = DRESSING_OPTIONS.find((o) => o.id === selectedDressing);
-    return (
-      BASE_BOWL_PRICE +
-      (base?.price ?? 0) +
-      (protein?.price ?? 0) +
-      (dressing?.price ?? 0)
-    );
-  };
+  const activeIngredients = (list: BowlIngredient[] | undefined) =>
+    (list ?? []).filter((i) => i.isActive);
 
-  const handleClose = () => {
+  const maxVegs = selectedSize ? Number(selectedSize.maxVegetables) : 3;
+  const maxProteins = selectedSize ? Number(selectedSize.maxProteins) : 1;
+  const maxDressings = selectedSize ? Number(selectedSize.maxDressings) : 1;
+
+  // ── Live totals ────────────────────────────────────────────────────────────
+  const allSelected = [
+    ...(selectedBase ? [selectedBase] : []),
+    ...selectedVegs,
+    ...selectedProteins,
+    ...selectedDressings,
+  ];
+
+  const totalCalories = allSelected.reduce((s, i) => s + Number(i.calories), 0);
+  const totalWeight = allSelected.reduce(
+    (s, i) => s + Number(i.weightG),
+    selectedSize ? Number(selectedSize.baseWeightG) : 0,
+  );
+  const totalPrice =
+    (selectedSize?.basePriceRs ?? 0) +
+    allSelected.reduce((s, i) => s + i.priceRs, 0);
+
+  function reset() {
+    setStep(0);
+    setSelectedSize(null);
+    setSelectedBase(null);
+    setSelectedVegs([]);
+    setSelectedProteins([]);
+    setSelectedDressings([]);
+  }
+
+  function handleClose() {
     onOpenChange(false);
-    setTimeout(() => {
-      setStep(0);
-      setSelectedBase("romaine");
-      setSelectedVegs([]);
-      setSelectedProtein("none");
-      setSelectedDressing("house");
-    }, 300);
-  };
+    setTimeout(reset, 300);
+  }
 
-  const toggleVeg = (id: string) => {
-    setSelectedVegs((prev) => {
-      if (prev.includes(id)) return prev.filter((v) => v !== id);
-      if (prev.length >= 4) return prev;
-      return [...prev, id];
+  function toggleMulti(
+    item: BowlIngredient,
+    _list: BowlIngredient[],
+    setList: React.Dispatch<React.SetStateAction<BowlIngredient[]>>,
+    max: number,
+  ) {
+    setList((prev) => {
+      if (prev.some((i) => i.id === item.id)) {
+        return prev.filter((i) => i.id !== item.id);
+      }
+      if (prev.length >= max) return prev;
+      return [...prev, item];
     });
-  };
+  }
 
-  const handleAddToCart = () => {
-    const baseLabel =
-      BASE_OPTIONS.find((o) => o.id === selectedBase)?.label ?? selectedBase;
-    const vegLabels = selectedVegs.map(
-      (id) => VEG_OPTIONS.find((o) => o.id === id)?.label ?? id,
-    );
-    const proteinLabel =
-      PROTEIN_OPTIONS.find((o) => o.id === selectedProtein)?.label ??
-      selectedProtein;
-    const dressingLabel =
-      DRESSING_OPTIONS.find((o) => o.id === selectedDressing)?.label ??
-      selectedDressing;
+  function canProceed(): boolean {
+    if (step === 0) return selectedSize !== null;
+    if (step === 1) return selectedBase !== null;
+    return true; // veg, protein, dressing are optional
+  }
+
+  function handleNext() {
+    if (step < STEPS.length - 1) setStep((s) => s + 1);
+  }
+
+  function handleBack() {
+    if (step > 0) setStep((s) => s - 1);
+  }
+
+  function handleAddToCart() {
+    if (!selectedSize) {
+      toast.error("Please select a bowl size.");
+      return;
+    }
+    if (!selectedBase) {
+      toast.error("Please select a base.");
+      return;
+    }
+
+    const ingredients = allSelected.map((i) => ({
+      id: i.id,
+      name: i.name,
+      weightG: Number(i.weightG),
+      calories: Number(i.calories),
+      priceRs: i.priceRs,
+      inventoryItemId: i.inventoryItemId,
+    }));
 
     addItem({
       menuItemId: BigInt(0),
-      name: "Custom Bowl",
-      unitPrice: calcPrice(),
+      name: `Custom Bowl (${selectedSize.name})`,
+      unitPrice: totalPrice,
       customBowlConfig: {
-        base: baseLabel,
-        vegetables: vegLabels.length > 0 ? vegLabels : ["No vegetables"],
-        protein: proteinLabel,
-        dressing: dressingLabel,
+        bowlSizeId: selectedSize.id,
+        bowlSizeName: selectedSize.name,
+        ingredients,
+        totalCalories,
+        totalWeight,
+        totalPrice,
+        // backward compat
+        base: selectedBase.name,
+        vegetables: selectedVegs.map((v) => v.name),
+        protein: selectedProteins[0]?.name ?? "",
+        dressing: selectedDressings[0]?.name ?? "",
       },
     });
+
     toast.success("Custom bowl added to cart!");
     handleClose();
-  };
+  }
 
-  const totalCalories = calcCalories();
-  const totalPrice = calcPrice();
+  // ── Step content ───────────────────────────────────────────────────────────
+  function renderStepContent() {
+    if (step === 0) {
+      if (sizesLoading) return <LoadingGrid count={2} />;
+      const activeSizes =
+        (sizes as BowlSize[] | undefined)?.filter((s) => s.isActive) ?? [];
+      if (!activeSizes.length) {
+        return (
+          <p className="text-muted-foreground text-sm text-center py-8">
+            No bowl sizes available. Please check back later.
+          </p>
+        );
+      }
+      return (
+        <SizeSelector
+          sizes={activeSizes}
+          selectedId={selectedSize?.id ?? null}
+          onSelect={setSelectedSize}
+        />
+      );
+    }
+
+    if (step === 1) {
+      if (basesLoading) return <LoadingGrid count={3} />;
+      const list = activeIngredients(bases as BowlIngredient[] | undefined);
+      return (
+        <div className="grid gap-2">
+          {list.map((ing) => (
+            <IngredientCard
+              key={ing.id.toString()}
+              ingredient={ing}
+              selected={selectedBase?.id === ing.id}
+              disabled={false}
+              onToggle={() =>
+                setSelectedBase(ing.id === selectedBase?.id ? null : ing)
+              }
+            />
+          ))}
+        </div>
+      );
+    }
+
+    if (step === 2) {
+      if (vegsLoading) return <LoadingGrid count={4} />;
+      const list = activeIngredients(vegs as BowlIngredient[] | undefined);
+      const atMax = selectedVegs.length >= maxVegs;
+      return (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground mb-2">
+            Select up to {maxVegs} vegetable{maxVegs !== 1 ? "s" : ""} (
+            {selectedVegs.length}/{maxVegs})
+          </p>
+          <div className="grid gap-2">
+            {list.map((ing) => {
+              const sel = selectedVegs.some((i) => i.id === ing.id);
+              return (
+                <IngredientCard
+                  key={ing.id.toString()}
+                  ingredient={ing}
+                  selected={sel}
+                  disabled={atMax && !sel}
+                  onToggle={() =>
+                    toggleMulti(ing, selectedVegs, setSelectedVegs, maxVegs)
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (step === 3) {
+      if (proteinsLoading) return <LoadingGrid count={3} />;
+      const list = activeIngredients(proteins as BowlIngredient[] | undefined);
+      const atMax = selectedProteins.length >= maxProteins;
+      return (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground mb-2">
+            Select up to {maxProteins} protein{maxProteins !== 1 ? "s" : ""} (
+            {selectedProteins.length}/{maxProteins})
+          </p>
+          <div className="grid gap-2">
+            {list.map((ing) => {
+              const sel = selectedProteins.some((i) => i.id === ing.id);
+              return (
+                <IngredientCard
+                  key={ing.id.toString()}
+                  ingredient={ing}
+                  selected={sel}
+                  disabled={atMax && !sel}
+                  onToggle={() =>
+                    toggleMulti(
+                      ing,
+                      selectedProteins,
+                      setSelectedProteins,
+                      maxProteins,
+                    )
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (step === 4) {
+      if (dressingsLoading) return <LoadingGrid count={3} />;
+      const list = activeIngredients(dressings as BowlIngredient[] | undefined);
+      const atMax = selectedDressings.length >= maxDressings;
+      return (
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground mb-2">
+            Select up to {maxDressings} dressing{maxDressings !== 1 ? "s" : ""}{" "}
+            ({selectedDressings.length}/{maxDressings})
+          </p>
+          <div className="grid gap-2">
+            {list.map((ing) => {
+              const sel = selectedDressings.some((i) => i.id === ing.id);
+              return (
+                <IngredientCard
+                  key={ing.id.toString()}
+                  ingredient={ing}
+                  selected={sel}
+                  disabled={atMax && !sel}
+                  onToggle={() =>
+                    toggleMulti(
+                      ing,
+                      selectedDressings,
+                      setSelectedDressings,
+                      maxDressings,
+                    )
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        className="max-w-lg w-full max-h-[90vh] overflow-y-auto"
-        data-ocid="build_bowl.dialog"
-      >
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
               <ChefHat className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle className="font-display text-xl font-bold">
-                Build Your Perfect Bowl
+              <DialogTitle className="text-lg font-bold">
+                Build Your Bowl
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
                 {STEPS[step].subtitle}
               </p>
             </div>
           </div>
+          {/* Step indicator */}
+          <div className="flex gap-1.5 mt-4">
+            {STEPS.map((s, i) => (
+              <div
+                key={s.title}
+                className={`h-1.5 flex-1 rounded-full transition-all ${
+                  i <= step ? "bg-primary" : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-sm font-semibold text-foreground mt-3">
+            Step {step + 1} of {STEPS.length}: {STEPS[step].title}
+          </p>
         </DialogHeader>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-6">
-          {STEPS.map((s, i) => (
-            <div key={s.title} className="flex items-center gap-2 flex-1">
-              <div
-                data-ocid={`build_bowl.step.${i + 1}`}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors ${
-                  i < step
-                    ? "bg-primary text-white"
-                    : i === step
-                      ? "bg-primary text-white ring-4 ring-primary/20"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
+        <div className="flex-1 overflow-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-0 h-full">
+            {/* Main content */}
+            <div className="lg:col-span-3 px-6 py-4 overflow-y-auto">
+              {renderStepContent()}
+            </div>
+
+            {/* Summary panel */}
+            <div className="lg:col-span-2 border-t lg:border-t-0 lg:border-l border-border bg-muted/30 px-5 py-4">
+              <h3 className="font-semibold text-sm text-foreground mb-3">
+                Your Bowl Summary
+              </h3>
+              {selectedSize && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  Size:{" "}
+                  <span className="text-foreground font-medium">
+                    {selectedSize.name}
+                  </span>
+                </p>
+              )}
+              <Separator className="mb-3" />
+              <div className="space-y-1.5 min-h-[80px]">
+                {allSelected.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    No ingredients selected yet
+                  </p>
+                ) : (
+                  allSelected.map((i) => (
+                    <div
+                      key={i.id.toString()}
+                      className="flex justify-between text-xs"
+                    >
+                      <span className="text-foreground">
+                        {i.name} ({Number(i.weightG)}g)
+                      </span>
+                      {i.priceRs > 0 && (
+                        <span className="text-muted-foreground">
+                          ₹{i.priceRs}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
-              {i < STEPS.length - 1 && (
-                <div
-                  className={`flex-1 h-1 rounded-full transition-colors ${
-                    i < step ? "bg-primary" : "bg-muted"
-                  }`}
-                />
+              <Separator className="my-3" />
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Weight</span>
+                  <span className="font-medium">{totalWeight}g</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Calories</span>
+                  <span className="font-medium">{totalCalories} kcal</span>
+                </div>
+              </div>
+              <Separator className="my-3" />
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold">Total Price</span>
+                <span className="text-lg font-bold text-primary">
+                  ₹{totalPrice}
+                </span>
+              </div>
+
+              {step === STEPS.length - 1 && (
+                <Button
+                  className="w-full mt-4"
+                  onClick={handleAddToCart}
+                  disabled={!selectedBase}
+                  data-ocid="bowl.primary_button"
+                >
+                  Add to Cart
+                </Button>
               )}
             </div>
-          ))}
-        </div>
-
-        {/* Step title */}
-        <h3 className="font-display font-bold text-lg text-foreground mb-4">
-          {STEPS[step].title}
-        </h3>
-
-        {/* Step content */}
-        <div className="space-y-3">
-          {step === 0 &&
-            BASE_OPTIONS.map((opt) => (
-              <OptionCard
-                key={opt.id}
-                option={opt}
-                selected={selectedBase === opt.id}
-                onToggle={() => setSelectedBase(opt.id)}
-                showPrice
-              />
-            ))}
-
-          {step === 1 && (
-            <>
-              <p className="text-xs text-muted-foreground mb-3">
-                Selected {selectedVegs.length}/4 vegetables
-              </p>
-              {VEG_OPTIONS.map((opt) => (
-                <OptionCard
-                  key={opt.id}
-                  option={opt}
-                  selected={selectedVegs.includes(opt.id)}
-                  onToggle={() => toggleVeg(opt.id)}
-                  showPrice={false}
-                />
-              ))}
-            </>
-          )}
-
-          {step === 2 &&
-            PROTEIN_OPTIONS.map((opt) => (
-              <OptionCard
-                key={opt.id}
-                option={opt}
-                selected={selectedProtein === opt.id}
-                onToggle={() => setSelectedProtein(opt.id)}
-                showPrice
-              />
-            ))}
-
-          {step === 3 &&
-            DRESSING_OPTIONS.map((opt) => (
-              <OptionCard
-                key={opt.id}
-                option={opt}
-                selected={selectedDressing === opt.id}
-                onToggle={() => setSelectedDressing(opt.id)}
-                showPrice
-              />
-            ))}
-        </div>
-
-        {/* Live totals */}
-        <div className="mt-6 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Calories</p>
-              <p className="font-display font-bold text-primary">
-                {totalCalories} kcal
-              </p>
-            </div>
-            <div className="w-px h-8 bg-border" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total Price</p>
-              <p className="font-display font-bold text-foreground">
-                ₹{totalPrice}
-              </p>
-            </div>
           </div>
-          <Badge
-            variant="outline"
-            className="text-xs text-primary border-primary/30"
-          >
-            Step {step + 1}/{STEPS.length}
-          </Badge>
         </div>
 
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-          {step > 0 ? (
-            <Button
-              variant="outline"
-              onClick={() => setStep((s) => s - 1)}
-              data-ocid="build_bowl.back_button"
-              className="gap-2"
-            >
-              ← Back
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              className="text-muted-foreground"
-            >
-              Cancel
-            </Button>
-          )}
-
+        {/* Navigation footer */}
+        <div className="flex justify-between items-center px-6 py-4 border-t border-border bg-background">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={step === 0}
+            data-ocid="bowl.secondary_button"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {step + 1} / {STEPS.length}
+          </span>
           {step < STEPS.length - 1 ? (
             <Button
-              onClick={() => setStep((s) => s + 1)}
-              data-ocid="build_bowl.next_button"
-              className="bg-primary hover:bg-primary/90 gap-2"
+              onClick={handleNext}
+              disabled={!canProceed()}
+              data-ocid="bowl.primary_button"
             >
-              Next →
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (
             <Button
               onClick={handleAddToCart}
-              data-ocid="build_bowl.add_button"
-              className="bg-primary hover:bg-primary/90 gap-2 font-semibold"
+              disabled={!selectedBase}
+              data-ocid="bowl.primary_button"
             >
-              <ChefHat className="h-4 w-4" />
-              Add to Cart · ₹{totalPrice}
+              Add to Cart
             </Button>
           )}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function LoadingGrid({ count }: { count: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static count list
+        <Skeleton key={i} className="h-16 w-full rounded-xl" />
+      ))}
+    </div>
   );
 }

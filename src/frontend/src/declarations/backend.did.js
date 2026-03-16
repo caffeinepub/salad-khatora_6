@@ -621,6 +621,17 @@ export const idlFactory = ({ IDL }) => {
     'toggleSubscriptionPlanTemplateStatus' : IDL.Func([IDL.Nat], [], []),
     'getAllSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
     'getActiveSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
+        'getAllBowlIngredients': IDL.Func([], [IDL.Vec(BowlIngredient)], ['query']),
+    'getBowlIngredientsByCategory': IDL.Func([BowlIngredientCategory], [IDL.Vec(BowlIngredient)], ['query']),
+    'createBowlIngredient': IDL.Func([IDL.Text, BowlIngredientCategory, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Text)], [IDL.Nat], []),
+    'updateBowlIngredient': IDL.Func([IDL.Nat, IDL.Text, BowlIngredientCategory, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Text)], [], []),
+    'toggleBowlIngredientStatus': IDL.Func([IDL.Nat], [], []),
+    'deleteBowlIngredient': IDL.Func([IDL.Nat], [], []),
+    'getAllBowlSizes': IDL.Func([], [IDL.Vec(BowlSize)], ['query']),
+    'createBowlSize': IDL.Func([IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat], [IDL.Nat], []),
+    'updateBowlSize': IDL.Func([IDL.Nat, IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat], [], []),
+    'toggleBowlSizeStatus': IDL.Func([IDL.Nat], [], []),
+    'deleteBowlSize': IDL.Func([IDL.Nat], [], []),
   });
 };
 

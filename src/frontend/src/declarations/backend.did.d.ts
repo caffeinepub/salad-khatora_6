@@ -161,6 +161,33 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export type BowlIngredientCategory = { 'base': null } | { 'vegetable': null } | { 'protein': null } | { 'dressing': null };
+
+export interface BowlIngredient {
+  'id': bigint;
+  'name': string;
+  'category': BowlIngredientCategory;
+  'priceRs': number;
+  'weightG': bigint;
+  'calories': bigint;
+  'inventoryItemId': [] | [bigint];
+  'imageData': [] | [string];
+  'isActive': boolean;
+  'createdAt': bigint;
+}
+
+export interface BowlSize {
+  'id': bigint;
+  'name': string;
+  'basePriceRs': number;
+  'baseWeightG': bigint;
+  'maxVegetables': bigint;
+  'maxProteins': bigint;
+  'maxDressings': bigint;
+  'isActive': boolean;
+  'createdAt': bigint;
+}
+
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addCoupon' : ActorMethod<[Coupon], undefined>,
@@ -264,6 +291,18 @@ export interface _SERVICE {
   'toggleSubscriptionPlanTemplateStatus' : ActorMethod<[bigint], undefined>,
   'getAllSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
   'getActiveSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
+  'getAllBowlIngredients': ActorMethod<[], Array<BowlIngredient>>;
+  'getBowlIngredientsByCategory': ActorMethod<[BowlIngredientCategory], Array<BowlIngredient>>;
+  'createBowlIngredient': ActorMethod<[string, BowlIngredientCategory, number, bigint, bigint, [] | [bigint], [] | [string]], bigint>;
+  'updateBowlIngredient': ActorMethod<[bigint, string, BowlIngredientCategory, number, bigint, bigint, [] | [bigint], [] | [string]], undefined>;
+  'toggleBowlIngredientStatus': ActorMethod<[bigint], undefined>;
+  'deleteBowlIngredient': ActorMethod<[bigint], undefined>;
+  'getAllBowlSizes': ActorMethod<[], Array<BowlSize>>;
+  'createBowlSize': ActorMethod<[string, number, bigint, bigint, bigint, bigint], bigint>;
+  'updateBowlSize': ActorMethod<[bigint, string, number, bigint, bigint, bigint, bigint], undefined>;
+  'toggleBowlSizeStatus': ActorMethod<[bigint], undefined>;
+  'deleteBowlSize': ActorMethod<[bigint], undefined>;
+
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

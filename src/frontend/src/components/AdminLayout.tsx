@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
   BarChart3,
   Calendar,
+  Carrot,
   Check,
   ChevronRight,
   Copy,
@@ -45,6 +46,18 @@ const ADMIN_LINKS = [
     to: "/admin/inventory",
     label: "Inventory",
     icon: Package,
+    exact: false,
+  },
+  {
+    to: "/admin/ingredients",
+    label: "Ingredients",
+    icon: Carrot,
+    exact: false,
+  },
+  {
+    to: "/admin/bowl-sizes",
+    label: "Bowl Sizes",
+    icon: UtensilsCrossed,
     exact: false,
   },
   { to: "/admin/coupons", label: "Coupons", icon: Tag, exact: false },

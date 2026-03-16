@@ -921,3 +921,230 @@ export function useToggleSubscriptionPlanTemplateStatus() {
     },
   });
 }
+
+// ─── Bowl Ingredients ─────────────────────────────────────────────────────────
+
+export function useBowlIngredients() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["bowlIngredients"],
+    queryFn: async () => {
+      if (!actor) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getAllBowlIngredients() as Promise<any[]>;
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useBowlIngredientsByCategory(category: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["bowlIngredients", category],
+    queryFn: async () => {
+      if (!actor) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getBowlIngredientsByCategory(category) as Promise<
+        any[]
+      >;
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useBowlSizes() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["bowlSizes"],
+    queryFn: async () => {
+      if (!actor) return [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).getAllBowlSizes() as Promise<any[]>;
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateBowlIngredient() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      name: string;
+      category: string;
+      priceRs: number;
+      weightG: bigint;
+      calories: bigint;
+      inventoryItemId: bigint | null;
+      imageData: string | null;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).createBowlIngredient(
+        args.name,
+        args.category,
+        args.priceRs,
+        args.weightG,
+        args.calories,
+        args.inventoryItemId,
+        args.imageData,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlIngredients"] });
+    },
+  });
+}
+
+export function useUpdateBowlIngredient() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      name: string;
+      category: string;
+      priceRs: number;
+      weightG: bigint;
+      calories: bigint;
+      inventoryItemId: bigint | null;
+      imageData: string | null;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).updateBowlIngredient(
+        args.id,
+        args.name,
+        args.category,
+        args.priceRs,
+        args.weightG,
+        args.calories,
+        args.inventoryItemId,
+        args.imageData,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlIngredients"] });
+    },
+  });
+}
+
+export function useToggleBowlIngredientStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).toggleBowlIngredientStatus(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlIngredients"] });
+    },
+  });
+}
+
+export function useDeleteBowlIngredient() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).deleteBowlIngredient(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlIngredients"] });
+    },
+  });
+}
+
+export function useCreateBowlSize() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      name: string;
+      basePriceRs: number;
+      baseWeightG: bigint;
+      maxVegetables: bigint;
+      maxProteins: bigint;
+      maxDressings: bigint;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (actor as any).createBowlSize(
+        args.name,
+        args.basePriceRs,
+        args.baseWeightG,
+        args.maxVegetables,
+        args.maxProteins,
+        args.maxDressings,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlSizes"] });
+    },
+  });
+}
+
+export function useUpdateBowlSize() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      name: string;
+      basePriceRs: number;
+      baseWeightG: bigint;
+      maxVegetables: bigint;
+      maxProteins: bigint;
+      maxDressings: bigint;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).updateBowlSize(
+        args.id,
+        args.name,
+        args.basePriceRs,
+        args.baseWeightG,
+        args.maxVegetables,
+        args.maxProteins,
+        args.maxDressings,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlSizes"] });
+    },
+  });
+}
+
+export function useToggleBowlSizeStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).toggleBowlSizeStatus(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlSizes"] });
+    },
+  });
+}
+
+export function useDeleteBowlSize() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (actor as any).deleteBowlSize(id);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bowlSizes"] });
+    },
+  });
+}

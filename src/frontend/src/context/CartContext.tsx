@@ -6,11 +6,27 @@ import {
   useState,
 } from "react";
 
+export interface CustomBowlIngredientDetail {
+  id: bigint;
+  name: string;
+  weightG: number;
+  calories: number;
+  priceRs: number;
+  inventoryItemId: bigint | null;
+}
+
 export interface CustomBowlConfig {
-  base: string;
-  vegetables: string[];
-  protein: string;
-  dressing: string;
+  bowlSizeId: bigint;
+  bowlSizeName: string;
+  ingredients: CustomBowlIngredientDetail[];
+  totalCalories: number;
+  totalWeight: number;
+  totalPrice: number;
+  // backward compat
+  base?: string;
+  vegetables?: string[];
+  protein?: string;
+  dressing?: string;
 }
 
 export interface CartItem {

@@ -1297,6 +1297,135 @@ export class Backend implements backendInterface {
             throw e;
         }
     }
+    // ---- BUILD YOUR BOWL: INGREDIENTS ----
+
+    async getAllBowlIngredients(): Promise<any[]> {
+        try {
+            const result = await (this.actor as any).getAllBowlIngredients();
+            return result.map(normalizeBowlIngredient);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async getBowlIngredientsByCategory(category: string): Promise<any[]> {
+        try {
+            const catVariant = { [category]: null };
+            const result = await (this.actor as any).getBowlIngredientsByCategory(catVariant);
+            return result.map(normalizeBowlIngredient);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async createBowlIngredient(
+        name: string, category: string, priceRs: number, weightG: bigint,
+        calories: bigint, inventoryItemId: bigint | null, imageData: string | null
+    ): Promise<bigint> {
+        try {
+            const catVariant = { [category]: null };
+            return await (this.actor as any).createBowlIngredient(
+                name, catVariant, priceRs, weightG, calories,
+                inventoryItemId != null ? [inventoryItemId] : [],
+                imageData != null ? [imageData] : []
+            );
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async updateBowlIngredient(
+        id: bigint, name: string, category: string, priceRs: number, weightG: bigint,
+        calories: bigint, inventoryItemId: bigint | null, imageData: string | null
+    ): Promise<void> {
+        try {
+            const catVariant = { [category]: null };
+            await (this.actor as any).updateBowlIngredient(
+                id, name, catVariant, priceRs, weightG, calories,
+                inventoryItemId != null ? [inventoryItemId] : [],
+                imageData != null ? [imageData] : []
+            );
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async toggleBowlIngredientStatus(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).toggleBowlIngredientStatus(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async deleteBowlIngredient(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).deleteBowlIngredient(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    // ---- BUILD YOUR BOWL: SIZES ----
+
+    async getAllBowlSizes(): Promise<any[]> {
+        try {
+            const result = await (this.actor as any).getAllBowlSizes();
+            return result.map(normalizeBowlSize);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async createBowlSize(
+        name: string, basePriceRs: number, baseWeightG: bigint,
+        maxVegetables: bigint, maxProteins: bigint, maxDressings: bigint
+    ): Promise<bigint> {
+        try {
+            return await (this.actor as any).createBowlSize(name, basePriceRs, baseWeightG, maxVegetables, maxProteins, maxDressings);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async updateBowlSize(
+        id: bigint, name: string, basePriceRs: number, baseWeightG: bigint,
+        maxVegetables: bigint, maxProteins: bigint, maxDressings: bigint
+    ): Promise<void> {
+        try {
+            await (this.actor as any).updateBowlSize(id, name, basePriceRs, baseWeightG, maxVegetables, maxProteins, maxDressings);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async toggleBowlSizeStatus(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).toggleBowlSizeStatus(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
+    async deleteBowlSize(id: bigint): Promise<void> {
+        try {
+            await (this.actor as any).deleteBowlSize(id);
+        } catch (e) {
+            if (this.processError) this.processError(e);
+            throw e;
+        }
+    }
+
     async updateOrderStatus(arg0: bigint, arg1: OrderStatus): Promise<void> {
         if (this.processError) {
             try {
@@ -1969,5 +2098,43 @@ function normalizePlanTemplateFromCandid(p: any): SubscriptionPlanTemplate {
         features: Array.isArray(p.features) ? p.features : [],
         badge: Array.isArray(p.badge) ? (p.badge.length > 0 ? p.badge[0] : undefined) : (p.badge || undefined),
         active: !!p.active,
+    };
+}
+
+function normalizeBowlIngredient(p: any): any {
+    let category = 'base';
+    if (p.category && typeof p.category === 'object') {
+        if ('vegetable' in p.category) category = 'vegetable';
+        else if ('protein' in p.category) category = 'protein';
+        else if ('dressing' in p.category) category = 'dressing';
+        else category = 'base';
+    } else if (typeof p.category === 'string') {
+        category = p.category;
+    }
+    return {
+        id: typeof p.id === 'bigint' ? p.id : BigInt(p.id ?? 0),
+        name: p.name ?? '',
+        category,
+        priceRs: typeof p.priceRs === 'number' ? p.priceRs : Number(p.priceRs ?? 0),
+        weightG: typeof p.weightG === 'bigint' ? p.weightG : BigInt(p.weightG ?? 0),
+        calories: typeof p.calories === 'bigint' ? p.calories : BigInt(p.calories ?? 0),
+        inventoryItemId: Array.isArray(p.inventoryItemId) ? (p.inventoryItemId.length > 0 ? p.inventoryItemId[0] : null) : (p.inventoryItemId ?? null),
+        imageData: Array.isArray(p.imageData) ? (p.imageData.length > 0 ? p.imageData[0] : null) : (p.imageData ?? null),
+        isActive: !!p.isActive,
+        createdAt: typeof p.createdAt === 'bigint' ? p.createdAt : BigInt(p.createdAt ?? 0),
+    };
+}
+
+function normalizeBowlSize(p: any): any {
+    return {
+        id: typeof p.id === 'bigint' ? p.id : BigInt(p.id ?? 0),
+        name: p.name ?? '',
+        basePriceRs: typeof p.basePriceRs === 'number' ? p.basePriceRs : Number(p.basePriceRs ?? 0),
+        baseWeightG: typeof p.baseWeightG === 'bigint' ? p.baseWeightG : BigInt(p.baseWeightG ?? 0),
+        maxVegetables: typeof p.maxVegetables === 'bigint' ? p.maxVegetables : BigInt(p.maxVegetables ?? 0),
+        maxProteins: typeof p.maxProteins === 'bigint' ? p.maxProteins : BigInt(p.maxProteins ?? 0),
+        maxDressings: typeof p.maxDressings === 'bigint' ? p.maxDressings : BigInt(p.maxDressings ?? 0),
+        isActive: !!p.isActive,
+        createdAt: typeof p.createdAt === 'bigint' ? p.createdAt : BigInt(p.createdAt ?? 0),
     };
 }

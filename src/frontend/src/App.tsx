@@ -13,10 +13,12 @@ import OrdersPage from "@/pages/OrdersPage";
 import ProfilePage from "@/pages/ProfilePage";
 import ReviewsPage from "@/pages/ReviewsPage";
 import SubscriptionsPage from "@/pages/SubscriptionsPage";
+import AdminBowlSizes from "@/pages/admin/AdminBowlSizes";
 import AdminCoupons from "@/pages/admin/AdminCoupons";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminDelivery from "@/pages/admin/AdminDelivery";
+import AdminIngredients from "@/pages/admin/AdminIngredients";
 import AdminInventory from "@/pages/admin/AdminInventory";
 import AdminMenu from "@/pages/admin/AdminMenu";
 import AdminOrders from "@/pages/admin/AdminOrders";
@@ -175,6 +177,18 @@ const adminReviewsRoute = createRoute({
   component: AdminReviews,
 });
 
+const adminIngredientsRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/ingredients",
+  component: AdminIngredients,
+});
+
+const adminBowlSizesRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/bowl-sizes",
+  component: AdminBowlSizes,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   menuRoute,
@@ -197,6 +211,8 @@ const routeTree = rootRoute.addChildren([
     adminMenuRoute,
     adminReviewsRoute,
     adminSettingsRoute,
+    adminIngredientsRoute,
+    adminBowlSizesRoute,
   ]),
 ]);
 

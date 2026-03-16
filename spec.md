@@ -1,67 +1,53 @@
-# Salad Khatora
+# Salad Khatora — Dynamic Build Your Bowl System
 
 ## Current State
 
-The app is a full-stack India-focused salad ordering platform with:
-- LandingPage: Hero section with "Eat Fresh. Feel Amazing." headline, "Browse Menu" + "Get Started" CTA buttons, numeric stats bar (50+ Fresh Items, 10k+ Happy Customers, 4.9★ Rating, 30min Delivery), features section, menu preview cards with calories badge as text in the bottom-left area, reviews carousel, CTA section, footer.
-- Navigation: Links ordered Home → Menu → Reviews → My Orders → Profile → Subscriptions (auth-gated). No visual highlight on Subscriptions.
-- WhatsAppButton: Fixed bottom-6 right-6 (green circle)
-- FloatingReviewButton: Fixed bottom-24 right-6 (primary green circle)
-- CartContext: CartItem = { menuItemId: bigint, name, unitPrice, quantity } — no custom bowl support yet.
-- MenuPage: Grid of menu cards with Add to Cart. No Build Your Bowl entry point.
+- `BuildYourBowlModal.tsx` uses hardcoded ingredient arrays (`BASE_OPTIONS`, `VEG_OPTIONS`, `PROTEIN_OPTIONS`, `DRESSING_OPTIONS`) with a fixed base price of ₹299
+- No bowl size selection step exists; max vegetables is hardcoded to 4
+- CartContext `CustomBowlConfig` only stores labels (strings), not ingredient IDs, weight, or calories
+- Custom bowls use `menuItemId = BigInt(0)`, so no inventory deduction occurs for them
+- Inventory deduction for regular items fires immediately in `placeOrder()` — before confirmation
+- AdminOrders.tsx does not display custom bowl config in any structured way
+- No admin UI for managing bowl ingredients or bowl sizes
+- Backend has no `BowlIngredient` or `BowlSize` types
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Build Your Bowl component** (`BuildYourBowlModal.tsx`): Step-by-step multi-step modal (Base → Vegetables → Protein → Dressing). Each step shows options with icons. Live calorie total and price total update as user selects options. "Add to Cart" adds a custom bowl item to the same cart as regular items. Bowl configuration is stored in the cart item for admin visibility.
-- **BuildYourBowlSection component** for the homepage: Prominent section below the hero featuring an image/illustration, headline "Build Your Perfect Bowl", subtitle, and a "Start Building" CTA button that opens the BuildYourBowlModal.
-- **CartItem extension**: Add optional `customBowlConfig?: { base: string, vegetables: string[], protein: string, dressing: string }` field to CartItem in CartContext. When a custom bowl is added to cart, this config is attached to the item.
-- **Custom bowl serialization in CheckoutPage**: When building the order items list for submission, if a CartItem has `customBowlConfig`, serialize it as a JSON string appended to the item name or as a note field so admin can see the ingredients.
+- **Backend types**: `BowlIngredient` (id, name, category variant, priceRs, weightG, calories, inventoryItemId opt, imageData opt, isActive, createdAt) and `BowlSize` (id, name, basePriceRs, baseWeightG, maxVegetables, maxProteins, maxDressings, isActive)
+- **Backend CRUD functions**: `getAllBowlIngredients`, `getBowlIngredientsByCategory`, `createBowlIngredient`, `updateBowlIngredient`, `toggleBowlIngredientStatus`, `deleteBowlIngredient`, `getAllBowlSizes`, `createBowlSize`, `updateBowlSize`, `toggleBowlSizeStatus`, `deleteBowlSize`
+- **Backend**: `deductBowlInventory(orderId)` — called from `updateOrderStatus` when transitioning to `#confirmed` or `#preparing`, reads custom bowl ingredient IDs from order notes JSON, deducts each ingredient's weightG from its mapped inventory item
+- **Backend seeding**: 12 default ingredients (3 bases, 4 vegetables, 3 proteins, 3 dressings) + 2 bowl sizes (Regular ₹149/250g, Large ₹199/350g)
+- **Admin page `AdminIngredients.tsx`**: table of all bowl ingredients with edit/toggle/delete; Add/Edit modal with name, category dropdown, price, weight, calories, inventory item dropdown (from `useAllIngredients()`), local image upload (max 2MB, compressed), active toggle
+- **Admin page `AdminBowlSizes.tsx`**: table of all bowl sizes with edit/toggle/delete; Add/Edit modal with name, base price, base weight, max vegetables, max proteins, max dressings, active toggle
+- **New hooks** in `useAdminQueries.ts`: `useBowlIngredients`, `useBowlIngredientsByCategory`, `useCreateBowlIngredient`, `useUpdateBowlIngredient`, `useToggleBowlIngredientStatus`, `useDeleteBowlIngredient`, `useBowlSizes`, `useCreateBowlSize`, `useUpdateBowlSize`, `useToggleBowlSizeStatus`, `useDeleteBowlSize`
+- **New routes** in `App.tsx`: `/admin/ingredients` and `/admin/bowl-sizes`
+- **New nav items** in `AdminLayout.tsx`: "Ingredients" and "Bowl Sizes" sidebar links
 
 ### Modify
-- **LandingPage hero**: 
-  - Update headline to "Fresh Salads. Healthy Daily Meals." with subtitle emphasizing fresh ingredients, customizable bowls, and subscription plans.
-  - Replace "Browse Menu" + "Get Started" buttons with:
-    - Primary: "Order Now" (scrolls to the menu preview section using `#menu-preview` anchor)
-    - Secondary: "View Menu" (navigates to /menu)
-  - Two-column grid layout is already present (md:grid-cols-2) — ensure image column is properly filled and balanced on desktop.
-- **LandingPage stats bar**: Replace numeric stats with 4 value cards — Fresh Ingredients (Leaf icon), Healthy Meals (Heart icon), Nutrition Focused (Apple/Salad icon — use `Apple` or `Sprout` from lucide), Quick Delivery (Clock icon). Show outlined Lucide icons above each label, no numbers.
-- **LandingPage**: Add `id="menu-preview"` to the menu preview section so hero "Order Now" can scroll to it.
-- **LandingPage**: Insert `BuildYourBowlSection` between the hero/stats area and the features section.
-- **Navigation**: Reorder nav links to Home → Menu → Subscriptions → Reviews → My Orders → Profile. Add a small green `Badge` with text "New" or a subtle accent style next to the "Subscriptions" link to highlight it. Subscriptions should be shown to all users (not auth-only), same as Reviews.
-- **MenuPage**: Add a "Build Your Bowl" button (primary outline style) near the top of the page (below the page heading), which opens the `BuildYourBowlModal`.
-- **WhatsAppButton**: Change position to `bottom-6 right-6` (unchanged).
-- **FloatingReviewButton**: Change position to `bottom-24 right-6` so buttons stack vertically with proper gap (WhatsApp at bottom-6, Review at bottom-24 — already correct, but ensure they don't overlap).
-- **LandingPage menu cards (Fresh Picks)**: Move calories badge inside the card info area at the bottom-right. Currently shown as `<span className="text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">`. Ensure it is positioned at the bottom-right of the card text section alongside the price. Ensure consistent card heights using flex-col and equal-height card containers.
-- **CartContext**: Extend `CartItem` interface with optional `customBowlConfig` field. The `addItem` function should accept this new optional field.
-- **MenuPage menu cards**: Apply the same calories badge positioning fix (bottom-right inside card info area). Ensure consistent card height across all items.
+- **`BuildYourBowlModal.tsx`**: Prepend Step 0 (choose bowl size from backend); replace all hardcoded ingredient arrays with live data from `useBowlIngredientsByCategory`; enforce per-size limits for vegetables, proteins, dressings; update pricing formula to `bowlSize.basePriceRs + sum(ingredient.priceRs for each selected portion)`; update weight calculation to `bowlSize.baseWeightG + sum(ingredient.weightG)`; calories = sum of ingredient calories only
+- **`CartContext.tsx`**: Expand `CustomBowlConfig` to include `bowlSizeId`, `bowlSizeName`, `ingredients: Array<{id, name, weightG, calories, priceRs}>`, `totalCalories`, `totalWeight`, `totalPrice`. Keep backward compat with old string-only config
+- **`AdminOrders.tsx`**: In the order detail view, parse `customBowl` field from order notes JSON and render a "Custom Bowl Details" card showing size, each ingredient with weight, total weight, total calories, total price
+- **`updateOrderStatus` backend function**: After updating status to `#confirmed` or `#preparing`, iterate through the order's items looking for `menuItemId = 0` (custom bowls), parse ingredient IDs from notes JSON, and deduct each ingredient's `weightG` from the mapped inventory item's `quantity`
+- **`backend.ts` (actor layer)**: Register all new BowlIngredient and BowlSize functions
+- **`backend.d.ts`**: Add type declarations for all new types and functions
 
 ### Remove
-- Remove "Get Started" button from hero section.
-- Remove "Browse Menu" button from hero section (replaced by "Order Now" and "View Menu").
-- Remove numeric stat values from stats bar (keep only icon + label).
+- Hardcoded `BASE_OPTIONS`, `VEG_OPTIONS`, `PROTEIN_OPTIONS`, `DRESSING_OPTIONS` arrays from `BuildYourBowlModal.tsx`
+- Hardcoded `BASE_BOWL_PRICE = 299` and `BASE_BOWL_CALORIES = 250` constants
+- Hardcoded `maxVegetables = 4` limit
 
 ## Implementation Plan
 
-1. **CartContext.tsx**: Add `customBowlConfig?: { base: string; vegetables: string[]; protein: string; dressing: string }` to `CartItem` interface. Update `addItem` to accept and preserve this field.
-
-2. **BuildYourBowlModal.tsx** (new): Create a multi-step Dialog/Sheet component.
-   - Step 1: Choose Base (Romaine Lettuce 0 kcal ₹0, Quinoa +80 kcal +₹50, Brown Rice +90 kcal +₹40)
-   - Step 2: Choose Vegetables (multi-select: Cucumber +10 kcal, Tomatoes +15 kcal, Spinach +7 kcal, Red Cabbage +12 kcal, Corn +25 kcal, Bell Peppers +15 kcal)
-   - Step 3: Choose Protein (Paneer +120 kcal +₹80, Chickpeas +100 kcal +₹60, Tofu +90 kcal +₹70, Grilled Chicken +150 kcal +₹100, No Protein 0)
-   - Step 4: Choose Dressing (Tahini +45 kcal +₹20, Caesar +60 kcal +₹20, Lime Citrus +15 kcal +₹15, Apple Cider Vinaigrette +20 kcal +₹15, House Dressing +30 kcal +₹20)
-   - Show live calorie total and price total at bottom of each step
-   - Base price ₹299 for the bowl, add-on prices stack on top
-   - "Add to Bowl" / "Next" buttons for navigation between steps
-   - Final step: "Add to Cart" button that calls `addItem({ menuItemId: BigInt(0), name: 'Custom Bowl', unitPrice: totalPrice, customBowlConfig: { base, vegetables, protein, dressing } })`
-   - data-ocid markers on all interactive elements
-
-3. **LandingPage.tsx**: Apply all hero, stats, nav, menu card, and section changes. Insert BuildYourBowlSection. Add `id="menu-preview"` to the menu section.
-
-4. **Navigation.tsx**: Reorder navLinks array. Add Badge accent to Subscriptions link. Make Subscriptions accessible to all users (remove authOnly restriction).
-
-5. **MenuPage.tsx**: Add BuildYourBowlModal import and trigger button. Fix calories badge positioning inside card info area. Ensure card heights are consistent.
-
-6. **CheckoutPage.tsx** (minor): When building the order request, check if a cart item has `customBowlConfig` and serialize it — e.g. append ingredients to the item name as ` (Base: X, Veggies: Y, Protein: Z, Dressing: W)` so admin can see it in the order details.
-
-7. **FloatingReviewButton.tsx / WhatsAppButton.tsx**: Verify stacking positions are correct (bottom-6 and bottom-24 at right-6) so buttons stack neatly without overlap.
+1. Add `BowlIngredient` and `BowlSize` Motoko types and stable storage vars to `main.mo`
+2. Add CRUD functions for both types with admin-only access control
+3. Add seeding logic (runs once if storage is empty) for 12 default ingredients + 2 bowl sizes
+4. Modify `updateOrderStatus` to trigger `deductBowlInventory` on transition to `#confirmed`/`#preparing`
+5. Register all new functions in `backend.ts` and `backend.d.ts`
+6. Build `AdminIngredients.tsx` page with full CRUD UI and image upload
+7. Build `AdminBowlSizes.tsx` page with full CRUD UI
+8. Add new hooks to `useAdminQueries.ts`
+9. Update `BuildYourBowlModal.tsx` — dynamic loading, bowl size step, live calculations
+10. Update `CartContext.tsx` — expanded `CustomBowlConfig` with IDs, weights, calories
+11. Update `AdminOrders.tsx` — parse and display Custom Bowl Details section
+12. Wire routes and nav in `App.tsx` and `AdminLayout.tsx`

@@ -7,6 +7,8 @@ import Principal "mo:core/Principal";
 import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
+import Char "mo:core/Char";
+import Nat32 "mo:core/Nat32";
 
 
 import AccessControl "authorization/access-control";
@@ -231,6 +233,40 @@ actor {
     badge : ?Text;
     active : Bool;
   };
+  // Bowl Ingredient Category
+  public type BowlIngredientCategory = {
+    #base;
+    #vegetable;
+    #protein;
+    #dressing;
+  };
+
+  // Bowl Ingredient
+  public type BowlIngredient = {
+    id : Nat;
+    name : Text;
+    category : BowlIngredientCategory;
+    priceRs : Float;
+    weightG : Nat;
+    calories : Nat;
+    inventoryItemId : ?Nat;
+    imageData : ?Text;
+    isActive : Bool;
+    createdAt : Int;
+  };
+
+  // Bowl Size
+  public type BowlSize = {
+    id : Nat;
+    name : Text;
+    basePriceRs : Float;
+    baseWeightG : Nat;
+    maxVegetables : Nat;
+    maxProteins : Nat;
+    maxDressings : Nat;
+    isActive : Bool;
+    createdAt : Int;
+  };
 
   /////////////////////
   // STATE           //
@@ -256,6 +292,14 @@ actor {
 
   let reviews = Map.empty<Nat, Review>();
   var nextReviewId : Nat = 1;
+
+  let bowlIngredients = Map.empty<Nat, BowlIngredient>();
+  var nextBowlIngredientId : Nat = 1;
+  var bowlIngredientsSeeded : Bool = false;
+
+  let bowlSizes = Map.empty<Nat, BowlSize>();
+  var nextBowlSizeId : Nat = 1;
+  var bowlSizesSeeded : Bool = false;
 
   var appSettings : AppSettings = {
     businessName = "Salad Khatora";
@@ -642,6 +686,20 @@ actor {
     switch (orders.get(orderId)) {
       case (null) { Runtime.trap("Order not found") };
       case (?order) {
+        // Deduct bowl inventory when order transitions to confirmed or preparing (only once)
+        let wasNotConfirmedOrPreparing = switch (order.status) {
+          case (#confirmed) { false };
+          case (#preparing) { false };
+          case (_) { true };
+        };
+        let isNowConfirmedOrPreparing = switch (status) {
+          case (#confirmed) { true };
+          case (#preparing) { true };
+          case (_) { false };
+        };
+        if (wasNotConfirmedOrPreparing and isNowConfirmedOrPreparing) {
+          deductBowlInventoryForOrder(order);
+        };
         orders.add(orderId, { order with status });
       };
     };
@@ -964,7 +1022,7 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized");
     };
-    ignore subscriptionPlanTemplates.remove(id);
+    subscriptionPlanTemplates.remove(id);
   };
 
   public shared ({ caller }) func toggleSubscriptionPlanTemplateStatus(id : Nat) : async () {
@@ -1282,4 +1340,337 @@ actor {
       totalCustomers;
     };
   };
+  ////////////////////////////
+  // BUILD YOUR BOWL        //
+  ////////////////////////////
+
+  func seedBowlData() {
+    if (bowlIngredientsSeeded) return;
+    bowlIngredientsSeeded := true;
+    bowlSizesSeeded := true;
+
+    // Seed Bowl Ingredients
+    let ingredientSeed : [(Nat, Text, BowlIngredientCategory, Float, Nat, Nat)] = [
+      (1, "Brown Rice",       #base,      40.0, 120, 130),
+      (2, "Quinoa",           #base,      50.0, 100, 120),
+      (3, "Lettuce",          #base,      20.0,  80,  15),
+      (4, "Cucumber",         #vegetable, 15.0,  40,  10),
+      (5, "Tomato",           #vegetable, 15.0,  40,  12),
+      (6, "Corn",             #vegetable, 20.0,  50,  45),
+      (7, "Carrot",           #vegetable, 15.0,  40,  17),
+      (8, "Paneer",           #protein,   70.0,  80, 180),
+      (9, "Chickpeas",        #protein,   40.0,  80, 130),
+      (10, "Tofu",            #protein,   60.0,  80,  95),
+      (11, "Mint Yogurt",     #dressing,  25.0,  20,  30),
+      (12, "Olive Oil Lemon", #dressing,  30.0,  15,  80),
+      (13, "Honey Mustard",   #dressing,  25.0,  20,  60),
+    ];
+
+    for ((id, name, cat, price, wt, cal) in ingredientSeed.vals()) {
+      let ing : BowlIngredient = {
+        id;
+        name;
+        category = cat;
+        priceRs = price;
+        weightG = wt;
+        calories = cal;
+        inventoryItemId = null;
+        imageData = null;
+        isActive = true;
+        createdAt = Time.now();
+      };
+      bowlIngredients.add(id, ing);
+      if (id >= nextBowlIngredientId) { nextBowlIngredientId := id + 1 };
+    };
+
+    // Seed Bowl Sizes
+    let sizeSeed : [(Nat, Text, Float, Nat, Nat, Nat, Nat)] = [
+      (1, "Regular", 149.0, 250, 3, 1, 1),
+      (2, "Large",   199.0, 350, 4, 2, 2),
+    ];
+
+    for ((id, name, basePrice, baseWt, maxVeg, maxProt, maxDress) in sizeSeed.vals()) {
+      let sz : BowlSize = {
+        id;
+        name;
+        basePriceRs = basePrice;
+        baseWeightG = baseWt;
+        maxVegetables = maxVeg;
+        maxProteins = maxProt;
+        maxDressings = maxDress;
+        isActive = true;
+        createdAt = Time.now();
+      };
+      bowlSizes.add(id, sz);
+      if (id >= nextBowlSizeId) { nextBowlSizeId := id + 1 };
+    };
+  };
+
+  public query func getAllBowlIngredients() : async [BowlIngredient] {
+    seedBowlData();
+    bowlIngredients.values().toArray();
+  };
+
+  public query func getBowlIngredientsByCategory(category : BowlIngredientCategory) : async [BowlIngredient] {
+    seedBowlData();
+    bowlIngredients.values().filter(func(i) {
+      i.isActive and (
+        switch (category, i.category) {
+          case (#base, #base)           { true };
+          case (#vegetable, #vegetable) { true };
+          case (#protein, #protein)     { true };
+          case (#dressing, #dressing)   { true };
+          case (_,_)                    { false };
+        }
+      )
+    }).toArray();
+  };
+
+  public shared ({ caller }) func createBowlIngredient(
+    name : Text,
+    category : BowlIngredientCategory,
+    priceRs : Float,
+    weightG : Nat,
+    calories : Nat,
+    inventoryItemId : ?Nat,
+    imageData : ?Text,
+  ) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    let id = nextBowlIngredientId;
+    nextBowlIngredientId += 1;
+    let ing : BowlIngredient = {
+      id;
+      name;
+      category;
+      priceRs;
+      weightG;
+      calories;
+      inventoryItemId;
+      imageData;
+      isActive = true;
+      createdAt = Time.now();
+    };
+    bowlIngredients.add(id, ing);
+    id;
+  };
+
+  public shared ({ caller }) func updateBowlIngredient(
+    id : Nat,
+    name : Text,
+    category : BowlIngredientCategory,
+    priceRs : Float,
+    weightG : Nat,
+    calories : Nat,
+    inventoryItemId : ?Nat,
+    imageData : ?Text,
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    switch (bowlIngredients.get(id)) {
+      case (null) { Runtime.trap("Bowl ingredient not found") };
+      case (?ing) {
+        bowlIngredients.add(id, {
+          ing with name; category; priceRs; weightG; calories; inventoryItemId; imageData;
+        });
+      };
+    };
+  };
+
+  public shared ({ caller }) func toggleBowlIngredientStatus(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    switch (bowlIngredients.get(id)) {
+      case (null) { Runtime.trap("Bowl ingredient not found") };
+      case (?ing) {
+        bowlIngredients.add(id, { ing with isActive = not ing.isActive });
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteBowlIngredient(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    bowlIngredients.remove(id);
+  };
+
+  public query func getAllBowlSizes() : async [BowlSize] {
+    seedBowlData();
+    bowlSizes.values().toArray();
+  };
+
+  public shared ({ caller }) func createBowlSize(
+    name : Text,
+    basePriceRs : Float,
+    baseWeightG : Nat,
+    maxVegetables : Nat,
+    maxProteins : Nat,
+    maxDressings : Nat,
+  ) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    let id = nextBowlSizeId;
+    nextBowlSizeId += 1;
+    let sz : BowlSize = {
+      id;
+      name;
+      basePriceRs;
+      baseWeightG;
+      maxVegetables;
+      maxProteins;
+      maxDressings;
+      isActive = true;
+      createdAt = Time.now();
+    };
+    bowlSizes.add(id, sz);
+    id;
+  };
+
+  public shared ({ caller }) func updateBowlSize(
+    id : Nat,
+    name : Text,
+    basePriceRs : Float,
+    baseWeightG : Nat,
+    maxVegetables : Nat,
+    maxProteins : Nat,
+    maxDressings : Nat,
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    switch (bowlSizes.get(id)) {
+      case (null) { Runtime.trap("Bowl size not found") };
+      case (?sz) {
+        bowlSizes.add(id, { sz with name; basePriceRs; baseWeightG; maxVegetables; maxProteins; maxDressings });
+      };
+    };
+  };
+
+  public shared ({ caller }) func toggleBowlSizeStatus(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    seedBowlData();
+    switch (bowlSizes.get(id)) {
+      case (null) { Runtime.trap("Bowl size not found") };
+      case (?sz) {
+        bowlSizes.add(id, { sz with isActive = not sz.isActive });
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteBowlSize(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
+      Runtime.trap("Unauthorized");
+    };
+    bowlSizes.remove(id);
+  };
+
+  // Deduct inventory for custom bowl when order is confirmed/preparing
+  func deductBowlInventoryForOrder(order : Order) {
+    // Only deduct if there's a custom bowl item (menuItemId = 0)
+    var hasBowl = false;
+    for (item in order.items.vals()) {
+      if (item.menuItemId == 0) { hasBowl := true };
+    };
+    if (not hasBowl) return;
+
+    // Parse ingredient inventory mappings from notes JSON text
+    // Notes JSON contains: "inventoryItemId":N and "weightG":N pairs in the customBowl section
+    switch (order.notes) {
+      case (null) {};
+      case (?notesText) {
+        let chars = notesText.chars().toArray();
+        let len = chars.size();
+
+        func parseNat(startPos : Nat) : (Nat, Nat) {
+          var n = 0;
+          var p = startPos;
+          while (p < len) {
+            let c = chars[p];
+            let code = c.toNat32().toNat();
+            if (code >= 48 and code <= 57) {
+              if (code >= 48) { n := n * 10 + (code - 48) };
+              p += 1;
+            } else {
+              return (n, p);
+            };
+          };
+          (n, p);
+        };
+
+        // Search for "inventoryItemId": patterns
+        // We look for the sequence of characters matching the key
+        let invKey : [Char] = ['\u{22}','i','n','v','e','n','t','o','r','y','I','t','e','m','I','d','\u{22}',':'];
+        let wgtKey : [Char] = ['\u{22}','w','e','i','g','h','t','G','\u{22}',':'];
+        let invKeyLen = invKey.size();
+        let wgtKeyLen = wgtKey.size();
+
+        var pos = 0;
+        while (pos + invKeyLen <= len) {
+          var matched = true;
+          var k = 0;
+          while (k < invKeyLen) {
+            if (chars[pos + k] != invKey[k]) { matched := false };
+            k += 1;
+          };
+          if (matched) {
+            var numStart = pos + invKeyLen;
+            while (numStart < len and (chars[numStart] == ' ' or chars[numStart] == '\u{09}')) {
+              numStart += 1;
+            };
+            let (invId, afterInv) = parseNat(numStart);
+            if (invId > 0) {
+              // Search for weightG within the next 300 characters
+              let searchEnd = if (afterInv + 300 < len) { afterInv + 300 } else { len };
+              var wPos = afterInv;
+              var found = false;
+              while (wPos + wgtKeyLen <= searchEnd and not found) {
+                var wMatched = true;
+                var wk = 0;
+                while (wk < wgtKeyLen) {
+                  if (chars[wPos + wk] != wgtKey[wk]) { wMatched := false };
+                  wk += 1;
+                };
+                if (wMatched) {
+                  var wnStart = wPos + wgtKeyLen;
+                  while (wnStart < len and (chars[wnStart] == ' ' or chars[wnStart] == '\u{09}')) {
+                    wnStart += 1;
+                  };
+                  let (weightGVal, _afterWgt) = parseNat(wnStart);
+                  if (weightGVal > 0) {
+                    switch (ingredients.get(invId)) {
+                      case (null) {};
+                      case (?inv) {
+                        if (inv.quantity >= weightGVal) {
+                          let newQty : Nat = inv.quantity - weightGVal; ingredients.add(invId, { inv with quantity = newQty });
+                        };
+                      };
+                    };
+                  };
+                  found := true;
+                };
+                wPos += 1;
+              };
+            };
+            pos := afterInv;
+          } else {
+            pos += 1;
+          };
+        };
+      };
+    };
+  };
+
+
 };
