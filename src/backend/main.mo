@@ -275,33 +275,34 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
-  let menuItems = Map.empty<Nat, MenuItem>();
-  let orders = Map.empty<Nat, Order>();
-  let subscriptions = Map.empty<Nat, Subscription>();
-  let ingredients = Map.empty<Nat, IngredientItem>();
-  let coupons = Map.empty<Nat, Coupon>();
-  let deliveryRiders = Map.empty<Nat, DeliveryRider>();
-  let orderDeliveries = Map.empty<Nat, OrderDelivery>();
-  let saladIngredients = Map.empty<Nat, [SaladIngredient]>();
-  var nextSubscriptionId = 1;
+  /////////////////////////////
+  // STABLE BACKING STORAGE  //
+  /////////////////////////////
 
-  let subscriptionPlanTemplates = Map.empty<Nat, SubscriptionPlanTemplate>();
-  var nextPlanTemplateId : Nat = 1;
-  var planTemplatesSeeded : Bool = false;
+  stable var stableUserProfiles : [(Principal, UserProfile)] = [];
+  stable var stableMenuItems : [(Nat, MenuItem)] = [];
+  stable var stableOrders : [(Nat, Order)] = [];
+  stable var stableSubscriptions : [(Nat, Subscription)] = [];
+  stable var stableIngredients : [(Nat, IngredientItem)] = [];
+  stable var stableCoupons : [(Nat, Coupon)] = [];
+  stable var stableDeliveryRiders : [(Nat, DeliveryRider)] = [];
+  stable var stableOrderDeliveries : [(Nat, OrderDelivery)] = [];
+  stable var stableSaladIngredients : [(Nat, [SaladIngredient])] = [];
+  stable var stableSubscriptionPlanTemplates : [(Nat, SubscriptionPlanTemplate)] = [];
+  stable var stableReviews : [(Nat, Review)] = [];
+  stable var stableBowlIngredients : [(Nat, BowlIngredient)] = [];
+  stable var stableBowlSizes : [(Nat, BowlSize)] = [];
 
-  let reviews = Map.empty<Nat, Review>();
-  var nextReviewId : Nat = 1;
+  stable var stableNextSubscriptionId : Nat = 1;
+  stable var stableNextPlanTemplateId : Nat = 1;
+  stable var stableNextReviewId : Nat = 1;
+  stable var stableNextBowlIngredientId : Nat = 1;
+  stable var stableNextBowlSizeId : Nat = 1;
+  stable var stablePlanTemplatesSeeded : Bool = false;
+  stable var stableBowlIngredientsSeeded : Bool = false;
+  stable var stableBowlSizesSeeded : Bool = false;
 
-  let bowlIngredients = Map.empty<Nat, BowlIngredient>();
-  var nextBowlIngredientId : Nat = 1;
-  var bowlIngredientsSeeded : Bool = false;
-
-  let bowlSizes = Map.empty<Nat, BowlSize>();
-  var nextBowlSizeId : Nat = 1;
-  var bowlSizesSeeded : Bool = false;
-
-  var appSettings : AppSettings = {
+  stable var stableAppSettings : AppSettings = {
     businessName = "Salad Khatora";
     whatsappNumber = "7660005766";
     taxEnabled = false;
@@ -312,6 +313,35 @@ actor {
     gstNumber = "";
     businessAddress = "";
   };
+
+  /////////////////////////////
+  // RUNTIME MAPS (restored) //
+  /////////////////////////////
+
+  let userProfiles = Map.fromIter<Principal, UserProfile>(stableUserProfiles.vals());
+  let menuItems = Map.fromIter<Nat, MenuItem>(stableMenuItems.vals());
+  let orders = Map.fromIter<Nat, Order>(stableOrders.vals());
+  let subscriptions = Map.fromIter<Nat, Subscription>(stableSubscriptions.vals());
+  let ingredients = Map.fromIter<Nat, IngredientItem>(stableIngredients.vals());
+  let coupons = Map.fromIter<Nat, Coupon>(stableCoupons.vals());
+  let deliveryRiders = Map.fromIter<Nat, DeliveryRider>(stableDeliveryRiders.vals());
+  let orderDeliveries = Map.fromIter<Nat, OrderDelivery>(stableOrderDeliveries.vals());
+  let saladIngredients = Map.fromIter<Nat, [SaladIngredient]>(stableSaladIngredients.vals());
+  let subscriptionPlanTemplates = Map.fromIter<Nat, SubscriptionPlanTemplate>(stableSubscriptionPlanTemplates.vals());
+  let reviews = Map.fromIter<Nat, Review>(stableReviews.vals());
+  let bowlIngredients = Map.fromIter<Nat, BowlIngredient>(stableBowlIngredients.vals());
+  let bowlSizes = Map.fromIter<Nat, BowlSize>(stableBowlSizes.vals());
+
+  var nextSubscriptionId = stableNextSubscriptionId;
+  var nextPlanTemplateId : Nat = stableNextPlanTemplateId;
+  var planTemplatesSeeded : Bool = stablePlanTemplatesSeeded;
+  var nextReviewId : Nat = stableNextReviewId;
+  var nextBowlIngredientId : Nat = stableNextBowlIngredientId;
+  var bowlIngredientsSeeded : Bool = stableBowlIngredientsSeeded;
+  var nextBowlSizeId : Nat = stableNextBowlSizeId;
+  var bowlSizesSeeded : Bool = stableBowlSizesSeeded;
+
+  var appSettings : AppSettings = stableAppSettings;
 
   ///////////////////////
   // REVIEWS           //
@@ -419,6 +449,7 @@ actor {
       Runtime.trap("Unauthorized: Only admins can update app settings");
     };
     appSettings := settings;
+    stableAppSettings := settings;
   };
 
   ///////////////////////
@@ -1672,5 +1703,53 @@ actor {
     };
   };
 
+
+
+  /////////////////////////////
+  // UPGRADE HOOKS           //
+  /////////////////////////////
+
+  system func preupgrade() {
+    stableUserProfiles := userProfiles.toArray();
+    stableMenuItems := menuItems.toArray();
+    stableOrders := orders.toArray();
+    stableSubscriptions := subscriptions.toArray();
+    stableIngredients := ingredients.toArray();
+    stableCoupons := coupons.toArray();
+    stableDeliveryRiders := deliveryRiders.toArray();
+    stableOrderDeliveries := orderDeliveries.toArray();
+    stableSaladIngredients := saladIngredients.toArray();
+    stableSubscriptionPlanTemplates := subscriptionPlanTemplates.toArray();
+    stableReviews := reviews.toArray();
+    stableBowlIngredients := bowlIngredients.toArray();
+    stableBowlSizes := bowlSizes.toArray();
+    stableNextSubscriptionId := nextSubscriptionId;
+    stableNextPlanTemplateId := nextPlanTemplateId;
+    stableNextReviewId := nextReviewId;
+    stableNextBowlIngredientId := nextBowlIngredientId;
+    stableNextBowlSizeId := nextBowlSizeId;
+    stablePlanTemplatesSeeded := planTemplatesSeeded;
+    stableBowlIngredientsSeeded := bowlIngredientsSeeded;
+    stableBowlSizesSeeded := bowlSizesSeeded;
+    stableAppSettings := appSettings;
+  };
+
+  system func postupgrade() {
+    // Maps are already restored from stable arrays at initialization.
+    // Reset stable arrays to free heap memory (optional optimization).
+    stableUserProfiles := [];
+    stableMenuItems := [];
+    stableOrders := [];
+    stableSubscriptions := [];
+    stableIngredients := [];
+    stableCoupons := [];
+    stableDeliveryRiders := [];
+    stableOrderDeliveries := [];
+    stableSaladIngredients := [];
+    stableSubscriptionPlanTemplates := [];
+    stableReviews := [];
+    stableBowlIngredients := [];
+    stableBowlSizes := [];
+  };
 
 };
