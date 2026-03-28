@@ -272,7 +272,15 @@ actor {
   // STATE           //
   /////////////////////
 
-  let accessControlState = AccessControl.initState();
+  // Stable backing for authorization state (user roles must survive upgrades)
+  stable var stableUserRoles : [(Principal, AccessControl.UserRole)] = [];
+  stable var stableAdminAssigned : Bool = false;
+
+  // Restore access control state from stable storage
+  let accessControlState : AccessControl.AccessControlState = {
+    var adminAssigned = stableAdminAssigned;
+    userRoles = Map.fromIter<Principal, AccessControl.UserRole>(stableUserRoles.vals());
+  };
   include MixinAuthorization(accessControlState);
 
   /////////////////////////////
@@ -293,6 +301,8 @@ actor {
   stable var stableBowlIngredients : [(Nat, BowlIngredient)] = [];
   stable var stableBowlSizes : [(Nat, BowlSize)] = [];
 
+  stable var stableNextOrderId : Nat = 1;
+  stable var stableNextMenuItemId : Nat = 1;
   stable var stableNextSubscriptionId : Nat = 1;
   stable var stableNextPlanTemplateId : Nat = 1;
   stable var stableNextReviewId : Nat = 1;
@@ -332,6 +342,8 @@ actor {
   let bowlIngredients = Map.fromIter<Nat, BowlIngredient>(stableBowlIngredients.vals());
   let bowlSizes = Map.fromIter<Nat, BowlSize>(stableBowlSizes.vals());
 
+  var nextOrderId : Nat = stableNextOrderId;
+  var nextMenuItemId : Nat = stableNextMenuItemId;
   var nextSubscriptionId = stableNextSubscriptionId;
   var nextPlanTemplateId : Nat = stableNextPlanTemplateId;
   var planTemplatesSeeded : Bool = stablePlanTemplatesSeeded;
@@ -637,7 +649,8 @@ actor {
       Runtime.trap("Unauthorized: Only users can place orders");
     };
 
-    let orderId = orders.size() + 1;
+    let orderId = nextOrderId;
+    nextOrderId += 1;
     let order : Order = {
       id = orderId;
       userId = caller;
@@ -1732,6 +1745,10 @@ actor {
     stableBowlIngredientsSeeded := bowlIngredientsSeeded;
     stableBowlSizesSeeded := bowlSizesSeeded;
     stableAppSettings := appSettings;
+    stableUserRoles := accessControlState.userRoles.toArray();
+    stableAdminAssigned := accessControlState.adminAssigned;
+    stableNextOrderId := nextOrderId;
+    stableNextMenuItemId := nextMenuItemId;
   };
 
   system func postupgrade() {

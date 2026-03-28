@@ -139,8 +139,9 @@ export async function createActorWithConfig(
       console.error(err);
     });
   }
+  // Only pass agent (already built from agentOptions/identity) to avoid
+  // "both agent and agentOptions" warning from createActor.
   const actorOptions = {
-    ...resolvedOptions,
     agent: agent,
     processError,
   };
