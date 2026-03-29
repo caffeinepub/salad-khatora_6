@@ -16,8 +16,14 @@ export function useActor() {
 
       if (!isAuthenticated) {
         // Return anonymous actor if not authenticated
+        console.log("[useActor] Creating anonymous actor");
         return await createActorWithConfig();
       }
+
+      console.log(
+        "[useActor] Creating authenticated actor for principal:",
+        identity.getPrincipal().toString(),
+      );
 
       const actorOptions = {
         agentOptions: {
@@ -26,28 +32,37 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      // Wrap in try/catch -- if already initialized or backend error,
-      // the actor itself is still valid and should be returned
+      console.log("[useActor] Actor created:", !!actor);
+
+      // Wrap in try/catch so a failure here does NOT nullify the actor.
+      // This call can throw if the session is already initialized or if
+      // the backend rejects it -- the actor is still valid either way.
       try {
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
         await actor._initializeAccessControlWithSecret(adminToken);
-      } catch (e) {
+        console.log("[useActor] Access control initialized");
+      } catch (err) {
         console.warn(
-          "[useActor] _initializeAccessControlWithSecret error (non-fatal):",
-          e,
+          "[useActor] _initializeAccessControlWithSecret failed (non-fatal):",
+          err,
         );
       }
+
       return actor;
     },
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    retry: 2,
+    // Retry a few times in case of transient network issues
+    retry: 3,
+    retryDelay: 1000,
+    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 
   // When the actor changes, invalidate dependent queries
   useEffect(() => {
     if (actorQuery.data) {
+      console.log("[useActor] Actor ready, invalidating dependent queries");
       queryClient.invalidateQueries({
         predicate: (query) => {
           return !query.queryKey.includes(ACTOR_QUERY_KEY);
@@ -64,5 +79,7 @@ export function useActor() {
   return {
     actor: actorQuery.data || null,
     isFetching: actorQuery.isFetching,
+    isError: actorQuery.isError,
+    error: actorQuery.error,
   };
 }
