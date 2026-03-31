@@ -273,8 +273,8 @@ actor {
   /////////////////////
 
   // Stable backing for authorization state (user roles must survive upgrades)
-  stable var stableUserRoles : [(Principal, AccessControl.UserRole)] = [];
-  stable var stableAdminAssigned : Bool = false;
+  var stableUserRoles : [(Principal, AccessControl.UserRole)] = [];
+  var stableAdminAssigned : Bool = false;
 
   // Restore access control state from stable storage
   let accessControlState : AccessControl.AccessControlState = {
@@ -287,32 +287,32 @@ actor {
   // STABLE BACKING STORAGE  //
   /////////////////////////////
 
-  stable var stableUserProfiles : [(Principal, UserProfile)] = [];
-  stable var stableMenuItems : [(Nat, MenuItem)] = [];
-  stable var stableOrders : [(Nat, Order)] = [];
-  stable var stableSubscriptions : [(Nat, Subscription)] = [];
-  stable var stableIngredients : [(Nat, IngredientItem)] = [];
-  stable var stableCoupons : [(Nat, Coupon)] = [];
-  stable var stableDeliveryRiders : [(Nat, DeliveryRider)] = [];
-  stable var stableOrderDeliveries : [(Nat, OrderDelivery)] = [];
-  stable var stableSaladIngredients : [(Nat, [SaladIngredient])] = [];
-  stable var stableSubscriptionPlanTemplates : [(Nat, SubscriptionPlanTemplate)] = [];
-  stable var stableReviews : [(Nat, Review)] = [];
-  stable var stableBowlIngredients : [(Nat, BowlIngredient)] = [];
-  stable var stableBowlSizes : [(Nat, BowlSize)] = [];
+  var stableUserProfiles : [(Principal, UserProfile)] = [];
+  var stableMenuItems : [(Nat, MenuItem)] = [];
+  var stableOrders : [(Nat, Order)] = [];
+  var stableSubscriptions : [(Nat, Subscription)] = [];
+  var stableIngredients : [(Nat, IngredientItem)] = [];
+  var stableCoupons : [(Nat, Coupon)] = [];
+  var stableDeliveryRiders : [(Nat, DeliveryRider)] = [];
+  var stableOrderDeliveries : [(Nat, OrderDelivery)] = [];
+  var stableSaladIngredients : [(Nat, [SaladIngredient])] = [];
+  var stableSubscriptionPlanTemplates : [(Nat, SubscriptionPlanTemplate)] = [];
+  var stableReviews : [(Nat, Review)] = [];
+  var stableBowlIngredients : [(Nat, BowlIngredient)] = [];
+  var stableBowlSizes : [(Nat, BowlSize)] = [];
 
-  stable var stableNextOrderId : Nat = 1;
-  stable var stableNextMenuItemId : Nat = 1;
-  stable var stableNextSubscriptionId : Nat = 1;
-  stable var stableNextPlanTemplateId : Nat = 1;
-  stable var stableNextReviewId : Nat = 1;
-  stable var stableNextBowlIngredientId : Nat = 1;
-  stable var stableNextBowlSizeId : Nat = 1;
-  stable var stablePlanTemplatesSeeded : Bool = false;
-  stable var stableBowlIngredientsSeeded : Bool = false;
-  stable var stableBowlSizesSeeded : Bool = false;
+  var stableNextOrderId : Nat = 1;
+  var stableNextMenuItemId : Nat = 1;
+  var stableNextSubscriptionId : Nat = 1;
+  var stableNextPlanTemplateId : Nat = 1;
+  var stableNextReviewId : Nat = 1;
+  var stableNextBowlIngredientId : Nat = 1;
+  var stableNextBowlSizeId : Nat = 1;
+  var stablePlanTemplatesSeeded : Bool = false;
+  var stableBowlIngredientsSeeded : Bool = false;
+  var stableBowlSizesSeeded : Bool = false;
 
-  stable var stableAppSettings : AppSettings = {
+  var stableAppSettings : AppSettings = {
     businessName = "Salad Khatora";
     whatsappNumber = "7660005766";
     taxEnabled = false;
@@ -354,6 +354,7 @@ actor {
   var bowlSizesSeeded : Bool = stableBowlSizesSeeded;
 
   var appSettings : AppSettings = stableAppSettings;
+
 
   ///////////////////////
   // REVIEWS           //
@@ -452,7 +453,7 @@ actor {
   // APP SETTINGS      //
   ///////////////////////
 
-  public query ({ caller }) func getAppSettings() : async AppSettings {
+  public query func getAppSettings() : async AppSettings {
     appSettings;
   };
 
@@ -475,14 +476,14 @@ actor {
     saladIngredients.add(saladId, ingredientList);
   };
 
-  public query ({ caller }) func getSaladIngredients(saladId : Nat) : async [SaladIngredient] {
+  public query func getSaladIngredients(saladId : Nat) : async [SaladIngredient] {
     switch (saladIngredients.get(saladId)) {
       case (null) { [] };
       case (?ingredients) { ingredients };
     };
   };
 
-  public query ({ caller }) func getAllSaladIngredients() : async [{ saladId : Nat; ingredients : [SaladIngredient] }] {
+  public query func getAllSaladIngredients() : async [{ saladId : Nat; ingredients : [SaladIngredient] }] {
     saladIngredients.toArray().map(
       func((saladId, ingredients)) {
         { saladId; ingredients };
@@ -1006,7 +1007,6 @@ actor {
   };
 
   public query func getActiveSubscriptionPlanTemplates() : async [SubscriptionPlanTemplate] {
-    seedPlanTemplates();
     subscriptionPlanTemplates.values().filter(func(t) { t.active }).toArray();
   };
 
@@ -1014,7 +1014,6 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #admin)) {
       Runtime.trap("Unauthorized");
     };
-    seedPlanTemplates();
     subscriptionPlanTemplates.values().toArray();
   };
 
@@ -1451,12 +1450,10 @@ actor {
   };
 
   public query func getAllBowlIngredients() : async [BowlIngredient] {
-    seedBowlData();
     bowlIngredients.values().toArray();
   };
 
   public query func getBowlIngredientsByCategory(category : BowlIngredientCategory) : async [BowlIngredient] {
-    seedBowlData();
     bowlIngredients.values().filter(func(i) {
       i.isActive and (
         switch (category, i.category) {
@@ -1546,7 +1543,6 @@ actor {
   };
 
   public query func getAllBowlSizes() : async [BowlSize] {
-    seedBowlData();
     bowlSizes.values().toArray();
   };
 
@@ -1767,6 +1763,11 @@ actor {
     stableReviews := [];
     stableBowlIngredients := [];
     stableBowlSizes := [];
+    // Seed default data on first deploy / first upgrade after a fresh install.
+    // Safe to call here because seed functions are defined before this hook,
+    // and the seeded-flags prevent double-seeding when data already exists.
+    if (not planTemplatesSeeded) { seedPlanTemplates() };
+    if (not bowlIngredientsSeeded) { seedBowlData() };
   };
 
 };

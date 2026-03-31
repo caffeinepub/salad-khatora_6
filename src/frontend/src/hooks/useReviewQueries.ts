@@ -13,7 +13,6 @@ export function useApprovedReviews() {
       return actor.getApprovedReviews();
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 30_000, // 30-second polling
   });
 }
 

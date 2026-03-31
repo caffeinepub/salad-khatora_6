@@ -743,12 +743,15 @@ export function useIsCallerAdmin() {
     // Seed the initial data from localStorage so the tab shows immediately on reload
     initialData: isCachedAdmin ? true : undefined,
     enabled: !!actor && !isFetching && !isInitializing && isRealIdentity,
-    staleTime: 0,
-    gcTime: 0,
-    retry: 5,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    // 5-minute cache: admin role rarely changes, no need to re-check every render.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    // 2 retries is sufficient; 5 retries + refetchOnWindowFocus caused visible
+    // reconnect storms on every tab focus.
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   return query;

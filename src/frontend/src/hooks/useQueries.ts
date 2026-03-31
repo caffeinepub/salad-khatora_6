@@ -268,7 +268,6 @@ export function useActiveSubscriptionPlanTemplates() {
       });
     },
     enabled: !!actor && !isFetching,
-    refetchInterval: 30_000,
   });
 }
 
