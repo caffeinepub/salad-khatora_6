@@ -15,15 +15,8 @@ export function useActor() {
       const isAuthenticated = !!identity;
 
       if (!isAuthenticated) {
-        // Return anonymous actor if not authenticated
-        console.log("[useActor] Creating anonymous actor");
         return await createActorWithConfig();
       }
-
-      console.log(
-        "[useActor] Creating authenticated actor for principal:",
-        identity.getPrincipal().toString(),
-      );
 
       const actorOptions = {
         agentOptions: {
@@ -32,11 +25,9 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      console.log("[useActor] Actor created:", !!actor);
 
-      // Wrap in try/catch so a failure here does NOT nullify the actor.
-      // This call can throw if the session is already initialized or if
-      // the backend rejects it -- the actor is still valid either way.
+      // Wrap in try/catch -- if this throws (session already initialized,
+      // backend reject, network blip) we still return a valid actor.
       try {
         const adminToken = getSecretParameter("caffeineAdminToken") || "";
         await actor._initializeAccessControlWithSecret(adminToken);
@@ -48,21 +39,20 @@ export function useActor() {
         );
       }
 
+      console.log(
+        "[useActor] Actor ready for principal:",
+        identity.getPrincipal().toText(),
+      );
       return actor;
     },
-    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // Retry a few times in case of transient network issues
     retry: 3,
     retryDelay: 1000,
-    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 
-  // When the actor changes, invalidate dependent queries
   useEffect(() => {
     if (actorQuery.data) {
-      console.log("[useActor] Actor ready, invalidating dependent queries");
       queryClient.invalidateQueries({
         predicate: (query) => {
           return !query.queryKey.includes(ACTOR_QUERY_KEY);
@@ -79,7 +69,5 @@ export function useActor() {
   return {
     actor: actorQuery.data || null,
     isFetching: actorQuery.isFetching,
-    isError: actorQuery.isError,
-    error: actorQuery.error,
   };
 }
