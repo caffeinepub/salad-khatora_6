@@ -1,4 +1,3 @@
-import { SubscriptionStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import {
   useMySubscription,
   useSubscribeToPlanTemplate,
 } from "@/hooks/useQueries";
+import { SubscriptionStatus } from "@/types/enums";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarCheck,

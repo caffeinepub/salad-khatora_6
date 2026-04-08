@@ -1,4 +1,3 @@
-import type { MenuItem, SaladIngredient } from "@/backend";
 import { ExternalBlob } from "@/backend";
 import {
   AlertDialog,
@@ -51,6 +50,7 @@ import {
   useToggleAvailability,
   useUpdateMenuItem,
 } from "@/hooks/useAdminQueries";
+import type { MenuItem, SaladIngredient } from "@/types/backend-types";
 import {
   ImageIcon,
   Leaf,

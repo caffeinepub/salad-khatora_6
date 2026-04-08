@@ -6,9 +6,9 @@ import type {
   Order,
   OrderItem,
   Subscription,
+  SubscriptionPlan,
   UserProfile,
-} from "../backend";
-import type { SubscriptionPlan } from "../backend";
+} from "../types/backend-types";
 import { getOrderFrequency } from "../utils/orderFrequency";
 import { useActor } from "./useActor";
 
@@ -33,7 +33,7 @@ export function useAllMenuItems() {
     queryKey: ["menuItems"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllMenuItems();
+      return (actor as any).getAllMenuItems();
     },
     enabled: !!actor && !isFetching,
   });
@@ -45,7 +45,7 @@ export function useMenuItemsByCategory(category: string) {
     queryKey: ["menuItems", "category", category],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMenuItemsByCategory(category);
+      return (actor as any).getMenuItemsByCategory(category);
     },
     enabled: !!actor && !isFetching,
   });
@@ -115,7 +115,7 @@ export function useSaveProfile() {
         );
       console.log("[Profile] Saving profile for principal:", profile.name);
       try {
-        await actor.createOrUpdateProfile(profile);
+        await (actor as any).createOrUpdateProfile(profile);
         console.log("[Profile] Profile saved successfully");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -150,7 +150,7 @@ export function useMyOrders() {
     queryKey: ["myOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyOrders();
+      return (actor as any).getMyOrders();
     },
     enabled: !!actor && !isFetching,
   });
@@ -172,7 +172,7 @@ export function usePlaceOrder() {
       if (!actor) throw new Error("Not connected");
       if (!items || items.length === 0) throw new Error("Cart is empty");
       if (totalAmount <= 0) throw new Error("Invalid order total");
-      return actor.placeOrder(items, totalAmount, notes);
+      return (actor as any).placeOrder(items, totalAmount, notes);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["myOrders"] });
@@ -188,7 +188,7 @@ export function useMySubscription() {
     queryKey: ["mySubscription"],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getMySubscription();
+      return (actor as any).getMySubscription();
     },
     enabled: !!actor && !isFetching,
   });
@@ -200,7 +200,7 @@ export function useSubscribeToPlan() {
   return useMutation({
     mutationFn: async (plan: SubscriptionPlan) => {
       if (!actor) throw new Error("Not connected");
-      return actor.subscribeToPlan(plan);
+      return (actor as any).subscribeToPlan(plan);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
@@ -277,7 +277,7 @@ export function useCancelSubscription() {
   return useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error("Not connected");
-      await actor.cancelSubscription();
+      await (actor as any).cancelSubscription();
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["mySubscription"] });
@@ -293,7 +293,7 @@ export function useAppSettings() {
     queryKey: ["appSettings"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getAppSettings();
+      return (actor as any).getAppSettings();
     },
     enabled: !!actor && !isFetching,
   });
@@ -304,7 +304,7 @@ export function useApplyCoupon() {
   return useMutation({
     mutationFn: async (code: string) => {
       if (!actor) throw new Error("Not connected");
-      const discount = await actor.applyCoupon(code);
+      const discount = await (actor as any).applyCoupon(code);
       return discount;
     },
   });
@@ -318,7 +318,7 @@ export function useCallerRole() {
     queryKey: ["callerRole"],
     queryFn: async () => {
       if (!actor) return "guest";
-      return actor.getCallerUserRole();
+      return (actor as any).getCallerUserRole();
     },
     enabled: !!actor && !isFetching,
   });

@@ -1,4 +1,3 @@
-import type { IngredientItem } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +25,7 @@ import {
   useGetAllSaladIngredients,
   useUpdateIngredient,
 } from "@/hooks/useAdminQueries";
+import type { IngredientItem } from "@/types/backend-types";
 import {
   AlertTriangle,
   Loader2,

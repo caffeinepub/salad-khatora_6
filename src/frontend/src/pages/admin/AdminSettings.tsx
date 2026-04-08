@@ -1,4 +1,3 @@
-import type { AppSettings } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppSettings, useSaveAppSettings } from "@/hooks/useAdminQueries";
+import type { AppSettings } from "@/types/backend-types";
 import {
   Building2,
   DollarSign,

@@ -21,18 +21,21 @@ export function useActor() {
         return await createActorWithConfig();
       }
 
+      // Pass only agentOptions (with identity). The local createActorWithConfig
+      // builds the agent from agentOptions and then explicitly OMITS agentOptions
+      // when calling createActor(), preventing the double-pass warning.
       const actor = await createActorWithConfig({
         agentOptions: { identity },
       });
 
       // Register the caller with the backend.
-      // IMPORTANT: wrap in try/catch — this call can fail transiently
+      // Wrapped in try/catch — this call can fail transiently
       // (cold canister, already-registered user, network blip). A failure
-      // here must NOT prevent the actor from being returned; all queries
-      // will simply retry on their own schedule.
+      // here must NOT prevent the actor from being returned.
       try {
         const adminToken = getSecretParameter("caffeineAdminToken") ?? "";
-        await actor._initializeAccessControlWithSecret(adminToken);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (actor as any)._initializeAccessControlWithSecret(adminToken);
         console.log(
           "[useActor] Actor ready for principal:",
           identity.getPrincipal().toString(),
@@ -56,8 +59,7 @@ export function useActor() {
 
   // When the actor becomes available, mark all other queries as stale so they
   // re-fetch on their next observation. We intentionally do NOT call
-  // refetchQueries here — that fires every query simultaneously, including
-  // admin-only ones, causing a reconnect storm before auth has settled.
+  // refetchQueries here to avoid a reconnect storm before auth has settled.
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({

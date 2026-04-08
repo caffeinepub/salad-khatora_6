@@ -95,6 +95,54 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const BowlIngredientCategory = IDL.Variant({
+  'base' : IDL.Null,
+  'dressing' : IDL.Null,
+  'vegetable' : IDL.Null,
+  'protein' : IDL.Null,
+});
+export const DurationType = IDL.Variant({
+  'monthly' : IDL.Null,
+  'weekly' : IDL.Null,
+});
+export const DeliveryFrequency = IDL.Variant({
+  'daily' : IDL.Null,
+  'weekly' : IDL.Null,
+});
+export const SubscriptionPlanTemplate = IDL.Record({
+  'id' : IDL.Nat,
+  'saladCount' : IDL.Nat,
+  'durationType' : DurationType,
+  'features' : IDL.Vec(IDL.Text),
+  'active' : IDL.Bool,
+  'deliveryFrequency' : DeliveryFrequency,
+  'name' : IDL.Text,
+  'badge' : IDL.Opt(IDL.Text),
+  'price' : IDL.Float64,
+});
+export const BowlIngredient = IDL.Record({
+  'id' : IDL.Nat,
+  'imageData' : IDL.Opt(IDL.Text),
+  'inventoryItemId' : IDL.Opt(IDL.Nat),
+  'calories' : IDL.Nat,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'isActive' : IDL.Bool,
+  'weightG' : IDL.Nat,
+  'priceRs' : IDL.Float64,
+  'category' : BowlIngredientCategory,
+});
+export const BowlSize = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'maxDressings' : IDL.Nat,
+  'isActive' : IDL.Bool,
+  'maxProteins' : IDL.Nat,
+  'maxVegetables' : IDL.Nat,
+  'baseWeightG' : IDL.Nat,
+  'basePriceRs' : IDL.Float64,
+});
 export const OrderDelivery = IDL.Record({
   'assignedAt' : IDL.Opt(IDL.Int),
   'riderId' : IDL.Opt(IDL.Nat),
@@ -158,7 +206,7 @@ export const DashboardStats = IDL.Record({
 });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  '_initializeAccessControl' : IDL.Func([], [], []),
   'addCoupon' : IDL.Func([Coupon], [], []),
   'addDeliveryRider' : IDL.Func([DeliveryRider], [], []),
   'addIngredient' : IDL.Func([IngredientItem], [], []),
@@ -208,11 +256,52 @@ export const idlService = IDL.Service({
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignRiderToOrder' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'cancelSubscription' : IDL.Func([], [], []),
+  'createBowlIngredient' : IDL.Func(
+      [
+        IDL.Text,
+        BowlIngredientCategory,
+        IDL.Float64,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Text),
+      ],
+      [IDL.Nat],
+      [],
+    ),
+  'createBowlSize' : IDL.Func(
+      [IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+      [IDL.Nat],
+      [],
+    ),
   'createOrUpdateProfile' : IDL.Func([UserProfile], [], []),
+  'createSubscriptionPlanTemplate' : IDL.Func(
+      [
+        IDL.Text,
+        DurationType,
+        IDL.Nat,
+        IDL.Float64,
+        DeliveryFrequency,
+        IDL.Vec(IDL.Text),
+        IDL.Opt(IDL.Text),
+      ],
+      [IDL.Nat],
+      [],
+    ),
+  'deleteBowlIngredient' : IDL.Func([IDL.Nat], [], []),
+  'deleteBowlSize' : IDL.Func([IDL.Nat], [], []),
   'deleteCoupon' : IDL.Func([IDL.Nat], [], []),
   'deleteIngredient' : IDL.Func([IDL.Nat], [], []),
   'deleteMenuItem' : IDL.Func([IDL.Nat], [], []),
+  'deleteSubscriptionPlanTemplate' : IDL.Func([IDL.Nat], [], []),
   'getActiveCoupons' : IDL.Func([], [IDL.Vec(Coupon)], ['query']),
+  'getActiveSubscriptionPlanTemplates' : IDL.Func(
+      [],
+      [IDL.Vec(SubscriptionPlanTemplate)],
+      ['query'],
+    ),
+  'getAllBowlIngredients' : IDL.Func([], [IDL.Vec(BowlIngredient)], ['query']),
+  'getAllBowlSizes' : IDL.Func([], [IDL.Vec(BowlSize)], ['query']),
   'getAllCoupons' : IDL.Func([], [IDL.Vec(Coupon)], ['query']),
   'getAllDeliveryRiders' : IDL.Func([], [IDL.Vec(DeliveryRider)], ['query']),
   'getAllIngredients' : IDL.Func([], [IDL.Vec(IngredientItem)], ['query']),
@@ -231,9 +320,19 @@ export const idlService = IDL.Service({
       ],
       ['query'],
     ),
+  'getAllSubscriptionPlanTemplates' : IDL.Func(
+      [],
+      [IDL.Vec(SubscriptionPlanTemplate)],
+      ['query'],
+    ),
   'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
   'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
   'getApprovedReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
+  'getBowlIngredientsByCategory' : IDL.Func(
+      [BowlIngredientCategory],
+      [IDL.Vec(BowlIngredient)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -275,56 +374,56 @@ export const idlService = IDL.Service({
       [],
     ),
   'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
+  'subscribeToPlanTemplate' : IDL.Func([IDL.Nat], [IDL.Nat], []),
   'toggleAvailability' : IDL.Func([IDL.Nat], [], []),
+  'toggleBowlIngredientStatus' : IDL.Func([IDL.Nat], [], []),
+  'toggleBowlSizeStatus' : IDL.Func([IDL.Nat], [], []),
+  'toggleSubscriptionPlanTemplateStatus' : IDL.Func([IDL.Nat], [], []),
+  'updateBowlIngredient' : IDL.Func(
+      [
+        IDL.Nat,
+        IDL.Text,
+        BowlIngredientCategory,
+        IDL.Float64,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Opt(IDL.Nat),
+        IDL.Opt(IDL.Text),
+      ],
+      [],
+      [],
+    ),
+  'updateBowlSize' : IDL.Func(
+      [IDL.Nat, IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+      [],
+      [],
+    ),
   'updateCoupon' : IDL.Func([Coupon], [], []),
   'updateDeliveryRider' : IDL.Func([DeliveryRider], [], []),
   'updateDeliveryStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'updateIngredient' : IDL.Func([IngredientItem], [], []),
   'updateMenuItem' : IDL.Func([MenuItem], [], []),
   'updateOrderStatus' : IDL.Func([IDL.Nat, OrderStatus], [], []),
+  'updateSubscriptionPlanTemplate' : IDL.Func(
+      [
+        IDL.Nat,
+        IDL.Text,
+        DurationType,
+        IDL.Nat,
+        IDL.Float64,
+        DeliveryFrequency,
+        IDL.Vec(IDL.Text),
+        IDL.Opt(IDL.Text),
+        IDL.Bool,
+      ],
+      [],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
 
-export const DurationType = IDL.Variant({
-  'weekly' : IDL.Null,
-  'monthly' : IDL.Null,
-});
-export const DeliveryFrequency = IDL.Variant({
-  'daily' : IDL.Null,
-  'weekly' : IDL.Null,
-});
-export const SubscriptionPlanTemplate = IDL.Record({
-  'id' : IDL.Nat,
-  'name' : IDL.Text,
-  'durationType' : DurationType,
-  'saladCount' : IDL.Nat,
-  'price' : IDL.Float64,
-  'deliveryFrequency' : DeliveryFrequency,
-  'features' : IDL.Vec(IDL.Text),
-  'badge' : IDL.Opt(IDL.Text),
-  'active' : IDL.Bool,
-});
 export const idlFactory = ({ IDL }) => {
-    const DurationType = IDL.Variant({
-      'weekly' : IDL.Null,
-      'monthly' : IDL.Null,
-    });
-    const DeliveryFrequency = IDL.Variant({
-      'daily' : IDL.Null,
-      'weekly' : IDL.Null,
-    });
-    const SubscriptionPlanTemplate = IDL.Record({
-      'id' : IDL.Nat,
-      'name' : IDL.Text,
-      'durationType' : DurationType,
-      'saladCount' : IDL.Nat,
-      'price' : IDL.Float64,
-      'deliveryFrequency' : DeliveryFrequency,
-      'features' : IDL.Vec(IDL.Text),
-      'badge' : IDL.Opt(IDL.Text),
-      'active' : IDL.Bool,
-    });
   const CouponDiscountType = IDL.Variant({
     'fixed' : IDL.Null,
     'percentage' : IDL.Null,
@@ -412,6 +511,54 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const BowlIngredientCategory = IDL.Variant({
+    'base' : IDL.Null,
+    'dressing' : IDL.Null,
+    'vegetable' : IDL.Null,
+    'protein' : IDL.Null,
+  });
+  const DurationType = IDL.Variant({
+    'monthly' : IDL.Null,
+    'weekly' : IDL.Null,
+  });
+  const DeliveryFrequency = IDL.Variant({
+    'daily' : IDL.Null,
+    'weekly' : IDL.Null,
+  });
+  const SubscriptionPlanTemplate = IDL.Record({
+    'id' : IDL.Nat,
+    'saladCount' : IDL.Nat,
+    'durationType' : DurationType,
+    'features' : IDL.Vec(IDL.Text),
+    'active' : IDL.Bool,
+    'deliveryFrequency' : DeliveryFrequency,
+    'name' : IDL.Text,
+    'badge' : IDL.Opt(IDL.Text),
+    'price' : IDL.Float64,
+  });
+  const BowlIngredient = IDL.Record({
+    'id' : IDL.Nat,
+    'imageData' : IDL.Opt(IDL.Text),
+    'inventoryItemId' : IDL.Opt(IDL.Nat),
+    'calories' : IDL.Nat,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'isActive' : IDL.Bool,
+    'weightG' : IDL.Nat,
+    'priceRs' : IDL.Float64,
+    'category' : BowlIngredientCategory,
+  });
+  const BowlSize = IDL.Record({
+    'id' : IDL.Nat,
+    'name' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'maxDressings' : IDL.Nat,
+    'isActive' : IDL.Bool,
+    'maxProteins' : IDL.Nat,
+    'maxVegetables' : IDL.Nat,
+    'baseWeightG' : IDL.Nat,
+    'basePriceRs' : IDL.Float64,
+  });
   const OrderDelivery = IDL.Record({
     'assignedAt' : IDL.Opt(IDL.Int),
     'riderId' : IDL.Opt(IDL.Nat),
@@ -475,7 +622,7 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    '_initializeAccessControl' : IDL.Func([], [], []),
     'addCoupon' : IDL.Func([Coupon], [], []),
     'addDeliveryRider' : IDL.Func([DeliveryRider], [], []),
     'addIngredient' : IDL.Func([IngredientItem], [], []),
@@ -525,11 +672,56 @@ export const idlFactory = ({ IDL }) => {
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignRiderToOrder' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'cancelSubscription' : IDL.Func([], [], []),
+    'createBowlIngredient' : IDL.Func(
+        [
+          IDL.Text,
+          BowlIngredientCategory,
+          IDL.Float64,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Text),
+        ],
+        [IDL.Nat],
+        [],
+      ),
+    'createBowlSize' : IDL.Func(
+        [IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+        [IDL.Nat],
+        [],
+      ),
     'createOrUpdateProfile' : IDL.Func([UserProfile], [], []),
+    'createSubscriptionPlanTemplate' : IDL.Func(
+        [
+          IDL.Text,
+          DurationType,
+          IDL.Nat,
+          IDL.Float64,
+          DeliveryFrequency,
+          IDL.Vec(IDL.Text),
+          IDL.Opt(IDL.Text),
+        ],
+        [IDL.Nat],
+        [],
+      ),
+    'deleteBowlIngredient' : IDL.Func([IDL.Nat], [], []),
+    'deleteBowlSize' : IDL.Func([IDL.Nat], [], []),
     'deleteCoupon' : IDL.Func([IDL.Nat], [], []),
     'deleteIngredient' : IDL.Func([IDL.Nat], [], []),
     'deleteMenuItem' : IDL.Func([IDL.Nat], [], []),
+    'deleteSubscriptionPlanTemplate' : IDL.Func([IDL.Nat], [], []),
     'getActiveCoupons' : IDL.Func([], [IDL.Vec(Coupon)], ['query']),
+    'getActiveSubscriptionPlanTemplates' : IDL.Func(
+        [],
+        [IDL.Vec(SubscriptionPlanTemplate)],
+        ['query'],
+      ),
+    'getAllBowlIngredients' : IDL.Func(
+        [],
+        [IDL.Vec(BowlIngredient)],
+        ['query'],
+      ),
+    'getAllBowlSizes' : IDL.Func([], [IDL.Vec(BowlSize)], ['query']),
     'getAllCoupons' : IDL.Func([], [IDL.Vec(Coupon)], ['query']),
     'getAllDeliveryRiders' : IDL.Func([], [IDL.Vec(DeliveryRider)], ['query']),
     'getAllIngredients' : IDL.Func([], [IDL.Vec(IngredientItem)], ['query']),
@@ -548,9 +740,19 @@ export const idlFactory = ({ IDL }) => {
         ],
         ['query'],
       ),
+    'getAllSubscriptionPlanTemplates' : IDL.Func(
+        [],
+        [IDL.Vec(SubscriptionPlanTemplate)],
+        ['query'],
+      ),
     'getAllSubscriptions' : IDL.Func([], [IDL.Vec(Subscription)], ['query']),
     'getAppSettings' : IDL.Func([], [AppSettings], ['query']),
     'getApprovedReviews' : IDL.Func([], [IDL.Vec(Review)], ['query']),
+    'getBowlIngredientsByCategory' : IDL.Func(
+        [BowlIngredientCategory],
+        [IDL.Vec(BowlIngredient)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
@@ -600,38 +802,51 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'subscribeToPlan' : IDL.Func([SubscriptionPlan], [IDL.Nat], []),
+    'subscribeToPlanTemplate' : IDL.Func([IDL.Nat], [IDL.Nat], []),
     'toggleAvailability' : IDL.Func([IDL.Nat], [], []),
+    'toggleBowlIngredientStatus' : IDL.Func([IDL.Nat], [], []),
+    'toggleBowlSizeStatus' : IDL.Func([IDL.Nat], [], []),
+    'toggleSubscriptionPlanTemplateStatus' : IDL.Func([IDL.Nat], [], []),
+    'updateBowlIngredient' : IDL.Func(
+        [
+          IDL.Nat,
+          IDL.Text,
+          BowlIngredientCategory,
+          IDL.Float64,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Opt(IDL.Nat),
+          IDL.Opt(IDL.Text),
+        ],
+        [],
+        [],
+      ),
+    'updateBowlSize' : IDL.Func(
+        [IDL.Nat, IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat],
+        [],
+        [],
+      ),
     'updateCoupon' : IDL.Func([Coupon], [], []),
     'updateDeliveryRider' : IDL.Func([DeliveryRider], [], []),
     'updateDeliveryStatus' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'updateIngredient' : IDL.Func([IngredientItem], [], []),
     'updateMenuItem' : IDL.Func([MenuItem], [], []),
     'updateOrderStatus' : IDL.Func([IDL.Nat, OrderStatus], [], []),
-    'createSubscriptionPlanTemplate' : IDL.Func(
-        [IDL.Text, DurationType, IDL.Nat, IDL.Float64, DeliveryFrequency, IDL.Vec(IDL.Text), IDL.Opt(IDL.Text)],
-        [IDL.Nat],
-        [],
-      ),
     'updateSubscriptionPlanTemplate' : IDL.Func(
-        [IDL.Nat, IDL.Text, DurationType, IDL.Nat, IDL.Float64, DeliveryFrequency, IDL.Vec(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+        [
+          IDL.Nat,
+          IDL.Text,
+          DurationType,
+          IDL.Nat,
+          IDL.Float64,
+          DeliveryFrequency,
+          IDL.Vec(IDL.Text),
+          IDL.Opt(IDL.Text),
+          IDL.Bool,
+        ],
         [],
         [],
       ),
-    'deleteSubscriptionPlanTemplate' : IDL.Func([IDL.Nat], [], []),
-    'toggleSubscriptionPlanTemplateStatus' : IDL.Func([IDL.Nat], [], []),
-    'getAllSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
-    'getActiveSubscriptionPlanTemplates' : IDL.Func([], [IDL.Vec(SubscriptionPlanTemplate)], ['query']),
-        'getAllBowlIngredients': IDL.Func([], [IDL.Vec(BowlIngredient)], ['query']),
-    'getBowlIngredientsByCategory': IDL.Func([BowlIngredientCategory], [IDL.Vec(BowlIngredient)], ['query']),
-    'createBowlIngredient': IDL.Func([IDL.Text, BowlIngredientCategory, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Text)], [IDL.Nat], []),
-    'updateBowlIngredient': IDL.Func([IDL.Nat, IDL.Text, BowlIngredientCategory, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat), IDL.Opt(IDL.Text)], [], []),
-    'toggleBowlIngredientStatus': IDL.Func([IDL.Nat], [], []),
-    'deleteBowlIngredient': IDL.Func([IDL.Nat], [], []),
-    'getAllBowlSizes': IDL.Func([], [IDL.Vec(BowlSize)], ['query']),
-    'createBowlSize': IDL.Func([IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat], [IDL.Nat], []),
-    'updateBowlSize': IDL.Func([IDL.Nat, IDL.Text, IDL.Float64, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat], [], []),
-    'toggleBowlSizeStatus': IDL.Func([IDL.Nat], [], []),
-    'deleteBowlSize': IDL.Func([IDL.Nat], [], []),
   });
 };
 

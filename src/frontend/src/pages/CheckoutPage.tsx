@@ -1,4 +1,3 @@
-import type { OrderItem } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,7 @@ import {
   useMyProfile,
   usePlaceOrder,
 } from "@/hooks/useQueries";
+import type { OrderItem } from "@/types/backend-types";
 import { recordOrderFrequency } from "@/utils/orderFrequency";
 import { useNavigate } from "@tanstack/react-router";
 import {

@@ -1,5 +1,3 @@
-import { SubscriptionPlan, SubscriptionStatus } from "@/backend";
-import type { Subscription } from "@/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +47,8 @@ import {
   useAllSubscriptions,
   useAllUsers,
 } from "@/hooks/useAdminQueries";
+import type { Subscription } from "@/types/backend-types";
+import { SubscriptionPlan, SubscriptionStatus } from "@/types/enums";
 import {
   CalendarCheck,
   CalendarPlus,

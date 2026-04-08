@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Review, ReviewStatus } from "../backend";
+import type { Review, ReviewStatus } from "../types/backend-types";
 import { useActor } from "./useActor";
 
 // ─── Public: Approved Reviews (no auth required) ──────────────────────────────
@@ -10,7 +10,7 @@ export function useApprovedReviews() {
     queryKey: ["approvedReviews"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getApprovedReviews();
+      return (actor as any).getApprovedReviews();
     },
     enabled: !!actor && !isFetching,
   });
@@ -24,7 +24,7 @@ export function useAdminAllReviews() {
     queryKey: ["adminReviews"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.adminGetAllReviews();
+      return (actor as any).adminGetAllReviews();
     },
     enabled: !!actor && !isFetching,
   });
@@ -48,7 +48,12 @@ export function useSubmitReview() {
       reviewText: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.submitReview(reviewerName, profession, rating, reviewText);
+      return (actor as any).submitReview(
+        reviewerName,
+        profession,
+        rating,
+        reviewText,
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["approvedReviews"] });
@@ -72,7 +77,7 @@ export function useAdminUpdateReview() {
       profession: string | null;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminUpdateReview(id, status, profession);
+      await (actor as any).adminUpdateReview(id, status, profession);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminReviews"] });
@@ -89,7 +94,7 @@ export function useAdminDeleteReview() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminDeleteReview(id);
+      await (actor as any).adminDeleteReview(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["adminReviews"] });

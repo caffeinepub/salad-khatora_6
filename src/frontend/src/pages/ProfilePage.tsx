@@ -1,5 +1,3 @@
-import type { UserProfile } from "@/backend";
-import { OrderStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useMyOrders, useMyProfile, useSaveProfile } from "@/hooks/useQueries";
+import type { UserProfile } from "@/types/backend-types";
+import { OrderStatus } from "@/types/enums";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,

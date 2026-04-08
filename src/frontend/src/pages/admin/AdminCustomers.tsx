@@ -1,9 +1,3 @@
-import type {
-  AdminUserRecord,
-  Order,
-  Subscription,
-  UserProfile,
-} from "@/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +54,12 @@ import {
   useAllSubscriptions,
   useAllUsers,
 } from "@/hooks/useAdminQueries";
+import type {
+  AdminUserRecord,
+  Order,
+  Subscription,
+  UserProfile,
+} from "@/types/backend-types";
 import { Principal } from "@icp-sdk/core/principal";
 import {
   CalendarDays,

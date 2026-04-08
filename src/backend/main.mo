@@ -11,8 +11,8 @@ import Char "mo:core/Char";
 import Nat32 "mo:core/Nat32";
 
 
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "mo:caffeineai-authorization/access-control";
+import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
 
 // MIGRATION: Keep this with clause for main actor!
 

@@ -1,4 +1,3 @@
-import { OrderStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +32,7 @@ import {
   useAssignRiderToOrder,
   useUpdateOrderStatus,
 } from "@/hooks/useAdminQueries";
+import { OrderStatus } from "@/types/enums";
 import {
   Download,
   Eye,
@@ -164,7 +164,7 @@ interface ReceiptOrder {
   }>;
   totalAmount: number;
   createdAt: bigint;
-  notes?: string;
+  notes?: string | null;
   status: OrderStatus;
 }
 
@@ -187,7 +187,7 @@ function receiptRow(label: string, value: string, totalWidth = 32): string {
 }
 
 const ReceiptContent: FC<ReceiptProps> = ({ order, businessDetails }) => {
-  const parsed = parseOrderNotes(order.notes);
+  const parsed = parseOrderNotes(order.notes ?? undefined);
   const customerName = parsed?.deliveryAddress?.fullName ?? "—";
   const customerPhone = parsed?.deliveryAddress?.mobile ?? "—";
   const paymentMethod = parsed?.paymentMethod ?? "";
@@ -956,7 +956,7 @@ export default function AdminOrders() {
 
                 {/* Delivery address + payment from notes */}
                 {(() => {
-                  const parsed = parseOrderNotes(viewOrder.notes);
+                  const parsed = parseOrderNotes(viewOrder.notes ?? undefined);
                   if (!parsed) return null;
                   return (
                     <>
@@ -1034,9 +1034,8 @@ export default function AdminOrders() {
 
                 {/* Custom Bowl Details */}
                 {(() => {
-                  const parsed = parseOrderNotes(viewOrder.notes);
+                  const parsed = parseOrderNotes(viewOrder.notes ?? undefined);
                   const bowls: CustomBowlOrderDetail[] = [];
-                  if (parsed?.customBowl) bowls.push(parsed.customBowl);
                   if (parsed?.customBowls?.length)
                     bowls.push(...parsed.customBowls);
                   if (!bowls.length) return null;

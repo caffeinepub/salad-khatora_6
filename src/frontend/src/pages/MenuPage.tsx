@@ -1,4 +1,3 @@
-import type { MenuItem } from "@/backend";
 import BuildYourBowlModal from "@/components/BuildYourBowlModal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/context/CartContext";
 import { useAllMenuItems } from "@/hooks/useQueries";
+import type { MenuItem } from "@/types/backend-types";
 import {
   Check,
   ChefHat,

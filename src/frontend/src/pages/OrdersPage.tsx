@@ -1,10 +1,10 @@
-import { OrderStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useMyOrders } from "@/hooks/useQueries";
+import { OrderStatus } from "@/types/enums";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,

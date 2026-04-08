@@ -25,6 +25,33 @@ export interface AppSettings {
   'servicePincodes' : Array<string>,
   'taxPercentage' : number,
 }
+export interface BowlIngredient {
+  'id' : bigint,
+  'imageData' : [] | [string],
+  'inventoryItemId' : [] | [bigint],
+  'calories' : bigint,
+  'name' : string,
+  'createdAt' : bigint,
+  'isActive' : boolean,
+  'weightG' : bigint,
+  'priceRs' : number,
+  'category' : BowlIngredientCategory,
+}
+export type BowlIngredientCategory = { 'base' : null } |
+  { 'dressing' : null } |
+  { 'vegetable' : null } |
+  { 'protein' : null };
+export interface BowlSize {
+  'id' : bigint,
+  'name' : string,
+  'createdAt' : bigint,
+  'maxDressings' : bigint,
+  'isActive' : boolean,
+  'maxProteins' : bigint,
+  'maxVegetables' : bigint,
+  'baseWeightG' : bigint,
+  'basePriceRs' : number,
+}
 export interface Coupon {
   'id' : bigint,
   'active' : boolean,
@@ -43,27 +70,16 @@ export interface DashboardStats {
   'activeSubscriptions' : bigint,
   'todayOrders' : bigint,
 }
+export type DeliveryFrequency = { 'daily' : null } |
+  { 'weekly' : null };
 export interface DeliveryRider {
   'id' : bigint,
   'name' : string,
   'available' : boolean,
   'phone' : string,
 }
-export type DurationType = { 'weekly' : null } |
-  { 'monthly' : null };
-export type DeliveryFrequency = { 'daily' : null } |
+export type DurationType = { 'monthly' : null } |
   { 'weekly' : null };
-export interface SubscriptionPlanTemplate {
-  'id' : bigint,
-  'name' : string,
-  'durationType' : DurationType,
-  'saladCount' : bigint,
-  'price' : number,
-  'deliveryFrequency' : DeliveryFrequency,
-  'features' : Array<string>,
-  'badge' : [] | [string],
-  'active' : boolean,
-}
 export interface IngredientItem {
   'id' : bigint,
   'lowStockThreshold' : bigint,
@@ -140,6 +156,17 @@ export interface Subscription {
 }
 export type SubscriptionPlan = { 'monthly' : null } |
   { 'weekly' : null };
+export interface SubscriptionPlanTemplate {
+  'id' : bigint,
+  'saladCount' : bigint,
+  'durationType' : DurationType,
+  'features' : Array<string>,
+  'active' : boolean,
+  'deliveryFrequency' : DeliveryFrequency,
+  'name' : string,
+  'badge' : [] | [string],
+  'price' : number,
+}
 export type SubscriptionStatus = { 'active' : null } |
   { 'cancelled' : null } |
   { 'paused' : null };
@@ -161,35 +188,8 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export type BowlIngredientCategory = { 'base': null } | { 'vegetable': null } | { 'protein': null } | { 'dressing': null };
-
-export interface BowlIngredient {
-  'id': bigint;
-  'name': string;
-  'category': BowlIngredientCategory;
-  'priceRs': number;
-  'weightG': bigint;
-  'calories': bigint;
-  'inventoryItemId': [] | [bigint];
-  'imageData': [] | [string];
-  'isActive': boolean;
-  'createdAt': bigint;
-}
-
-export interface BowlSize {
-  'id': bigint;
-  'name': string;
-  'basePriceRs': number;
-  'baseWeightG': bigint;
-  'maxVegetables': bigint;
-  'maxProteins': bigint;
-  'maxDressings': bigint;
-  'isActive': boolean;
-  'createdAt': bigint;
-}
-
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  '_initializeAccessControl' : ActorMethod<[], undefined>,
   'addCoupon' : ActorMethod<[Coupon], undefined>,
   'addDeliveryRider' : ActorMethod<[DeliveryRider], undefined>,
   'addIngredient' : ActorMethod<[IngredientItem], undefined>,
@@ -236,11 +236,48 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignRiderToOrder' : ActorMethod<[bigint, bigint], undefined>,
   'cancelSubscription' : ActorMethod<[], undefined>,
+  'createBowlIngredient' : ActorMethod<
+    [
+      string,
+      BowlIngredientCategory,
+      number,
+      bigint,
+      bigint,
+      [] | [bigint],
+      [] | [string],
+    ],
+    bigint
+  >,
+  'createBowlSize' : ActorMethod<
+    [string, number, bigint, bigint, bigint, bigint],
+    bigint
+  >,
   'createOrUpdateProfile' : ActorMethod<[UserProfile], undefined>,
+  'createSubscriptionPlanTemplate' : ActorMethod<
+    [
+      string,
+      DurationType,
+      bigint,
+      number,
+      DeliveryFrequency,
+      Array<string>,
+      [] | [string],
+    ],
+    bigint
+  >,
+  'deleteBowlIngredient' : ActorMethod<[bigint], undefined>,
+  'deleteBowlSize' : ActorMethod<[bigint], undefined>,
   'deleteCoupon' : ActorMethod<[bigint], undefined>,
   'deleteIngredient' : ActorMethod<[bigint], undefined>,
   'deleteMenuItem' : ActorMethod<[bigint], undefined>,
+  'deleteSubscriptionPlanTemplate' : ActorMethod<[bigint], undefined>,
   'getActiveCoupons' : ActorMethod<[], Array<Coupon>>,
+  'getActiveSubscriptionPlanTemplates' : ActorMethod<
+    [],
+    Array<SubscriptionPlanTemplate>
+  >,
+  'getAllBowlIngredients' : ActorMethod<[], Array<BowlIngredient>>,
+  'getAllBowlSizes' : ActorMethod<[], Array<BowlSize>>,
   'getAllCoupons' : ActorMethod<[], Array<Coupon>>,
   'getAllDeliveryRiders' : ActorMethod<[], Array<DeliveryRider>>,
   'getAllIngredients' : ActorMethod<[], Array<IngredientItem>>,
@@ -251,9 +288,17 @@ export interface _SERVICE {
     [],
     Array<{ 'saladId' : bigint, 'ingredients' : Array<SaladIngredient> }>
   >,
+  'getAllSubscriptionPlanTemplates' : ActorMethod<
+    [],
+    Array<SubscriptionPlanTemplate>
+  >,
   'getAllSubscriptions' : ActorMethod<[], Array<Subscription>>,
   'getAppSettings' : ActorMethod<[], AppSettings>,
   'getApprovedReviews' : ActorMethod<[], Array<Review>>,
+  'getBowlIngredientsByCategory' : ActorMethod<
+    [BowlIngredientCategory],
+    Array<BowlIngredient>
+  >,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
@@ -278,31 +323,48 @@ export interface _SERVICE {
   >,
   'submitReview' : ActorMethod<[string, [] | [string], bigint, string], bigint>,
   'subscribeToPlan' : ActorMethod<[SubscriptionPlan], bigint>,
+  'subscribeToPlanTemplate' : ActorMethod<[bigint], bigint>,
   'toggleAvailability' : ActorMethod<[bigint], undefined>,
+  'toggleBowlIngredientStatus' : ActorMethod<[bigint], undefined>,
+  'toggleBowlSizeStatus' : ActorMethod<[bigint], undefined>,
+  'toggleSubscriptionPlanTemplateStatus' : ActorMethod<[bigint], undefined>,
+  'updateBowlIngredient' : ActorMethod<
+    [
+      bigint,
+      string,
+      BowlIngredientCategory,
+      number,
+      bigint,
+      bigint,
+      [] | [bigint],
+      [] | [string],
+    ],
+    undefined
+  >,
+  'updateBowlSize' : ActorMethod<
+    [bigint, string, number, bigint, bigint, bigint, bigint],
+    undefined
+  >,
   'updateCoupon' : ActorMethod<[Coupon], undefined>,
   'updateDeliveryRider' : ActorMethod<[DeliveryRider], undefined>,
   'updateDeliveryStatus' : ActorMethod<[bigint, string], undefined>,
   'updateIngredient' : ActorMethod<[IngredientItem], undefined>,
   'updateMenuItem' : ActorMethod<[MenuItem], undefined>,
   'updateOrderStatus' : ActorMethod<[bigint, OrderStatus], undefined>,
-  'createSubscriptionPlanTemplate' : ActorMethod<[string, DurationType, bigint, number, DeliveryFrequency, Array<string>, [] | [string]], bigint>,
-  'updateSubscriptionPlanTemplate' : ActorMethod<[bigint, string, DurationType, bigint, number, DeliveryFrequency, Array<string>, [] | [string], boolean], undefined>,
-  'deleteSubscriptionPlanTemplate' : ActorMethod<[bigint], undefined>,
-  'toggleSubscriptionPlanTemplateStatus' : ActorMethod<[bigint], undefined>,
-  'getAllSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
-  'getActiveSubscriptionPlanTemplates' : ActorMethod<[], Array<SubscriptionPlanTemplate>>,
-  'getAllBowlIngredients': ActorMethod<[], Array<BowlIngredient>>;
-  'getBowlIngredientsByCategory': ActorMethod<[BowlIngredientCategory], Array<BowlIngredient>>;
-  'createBowlIngredient': ActorMethod<[string, BowlIngredientCategory, number, bigint, bigint, [] | [bigint], [] | [string]], bigint>;
-  'updateBowlIngredient': ActorMethod<[bigint, string, BowlIngredientCategory, number, bigint, bigint, [] | [bigint], [] | [string]], undefined>;
-  'toggleBowlIngredientStatus': ActorMethod<[bigint], undefined>;
-  'deleteBowlIngredient': ActorMethod<[bigint], undefined>;
-  'getAllBowlSizes': ActorMethod<[], Array<BowlSize>>;
-  'createBowlSize': ActorMethod<[string, number, bigint, bigint, bigint, bigint], bigint>;
-  'updateBowlSize': ActorMethod<[bigint, string, number, bigint, bigint, bigint, bigint], undefined>;
-  'toggleBowlSizeStatus': ActorMethod<[bigint], undefined>;
-  'deleteBowlSize': ActorMethod<[bigint], undefined>;
-
+  'updateSubscriptionPlanTemplate' : ActorMethod<
+    [
+      bigint,
+      string,
+      DurationType,
+      bigint,
+      number,
+      DeliveryFrequency,
+      Array<string>,
+      [] | [string],
+      boolean,
+    ],
+    undefined
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

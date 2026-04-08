@@ -1,0 +1,333 @@
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = 
+ record {
+   address: opt text;
+   age: opt nat;
+   bmi: opt float64;
+   dailyCalories: opt nat;
+   dietaryPreferences: opt text;
+   dietaryRestrictions: opt text;
+   email: opt text;
+   gender: opt text;
+   height: opt float64;
+   idealWeight: opt float64;
+   mobileNumber: text;
+   name: text;
+   weight: opt float64;
+ };
+type SubscriptionStatus = 
+ variant {
+   active;
+   cancelled;
+   paused;
+ };
+type SubscriptionPlanTemplate = 
+ record {
+   active: bool;
+   badge: opt text;
+   deliveryFrequency: DeliveryFrequency;
+   durationType: DurationType;
+   features: vec text;
+   id: nat;
+   name: text;
+   price: float64;
+   saladCount: nat;
+ };
+type SubscriptionPlan = 
+ variant {
+   monthly;
+   weekly;
+ };
+type Subscription = 
+ record {
+   endDate: int;
+   id: nat;
+   plan: SubscriptionPlan;
+   remainingSalads: nat;
+   startDate: int;
+   status: SubscriptionStatus;
+   totalSalads: nat;
+   userId: principal;
+ };
+type SaladIngredient = 
+ record {
+   ingredientId: nat;
+   quantityRequired: nat;
+   saladId: nat;
+ };
+type ReviewStatus = 
+ variant {
+   approved;
+   pending;
+   rejected;
+ };
+type Review = 
+ record {
+   createdAt: int;
+   id: nat;
+   profession: opt text;
+   rating: nat;
+   reviewText: text;
+   reviewerName: text;
+   status: ReviewStatus;
+   userId: opt principal;
+ };
+type OrderStatus = 
+ variant {
+   cancelled;
+   confirmed;
+   delivered;
+   outForDelivery;
+   pending;
+   preparing;
+ };
+type OrderItem = 
+ record {
+   menuItemId: nat;
+   quantity: nat;
+   unitPrice: float64;
+ };
+type OrderDelivery = 
+ record {
+   assignedAt: opt int;
+   deliveryStatus: opt text;
+   orderId: nat;
+   riderId: opt nat;
+   riderName: opt text;
+ };
+type Order = 
+ record {
+   createdAt: int;
+   id: nat;
+   items: vec OrderItem;
+   notes: opt text;
+   status: OrderStatus;
+   totalAmount: float64;
+   userId: principal;
+ };
+type MenuItem = 
+ record {
+   available: bool;
+   calories: nat;
+   category: text;
+   description: text;
+   id: nat;
+   imageUrl: opt text;
+   name: text;
+   price: float64;
+   protein: nat;
+ };
+type IngredientItem = 
+ record {
+   id: nat;
+   lowStockThreshold: nat;
+   name: text;
+   pricePerUnit: float64;
+   quantity: nat;
+   unit: text;
+ };
+type DurationType = 
+ variant {
+   monthly;
+   weekly;
+ };
+type DeliveryRider = 
+ record {
+   available: bool;
+   id: nat;
+   name: text;
+   phone: text;
+ };
+type DeliveryFrequency = 
+ variant {
+   daily;
+   weekly;
+ };
+type DashboardStats = 
+ record {
+   activeSubscriptions: nat;
+   todayOrders: nat;
+   totalCustomers: nat;
+   totalRevenue: float64;
+ };
+type CouponDiscountType = 
+ variant {
+   fixed;
+   percentage;
+ };
+type Coupon = 
+ record {
+   active: bool;
+   code: text;
+   discountType: CouponDiscountType;
+   discountValue: float64;
+   expiryDate: int;
+   id: nat;
+   usageLimit: nat;
+   usedCount: nat;
+ };
+type BowlSize = 
+ record {
+   basePriceRs: float64;
+   baseWeightG: nat;
+   createdAt: int;
+   id: nat;
+   isActive: bool;
+   maxDressings: nat;
+   maxProteins: nat;
+   maxVegetables: nat;
+   name: text;
+ };
+type BowlIngredientCategory = 
+ variant {
+   base;
+   dressing;
+   protein;
+   vegetable;
+ };
+type BowlIngredient = 
+ record {
+   calories: nat;
+   category: BowlIngredientCategory;
+   createdAt: int;
+   id: nat;
+   imageData: opt text;
+   inventoryItemId: opt nat;
+   isActive: bool;
+   name: text;
+   priceRs: float64;
+   weightG: nat;
+ };
+type AppSettings = 
+ record {
+   businessAddress: text;
+   businessName: text;
+   deliveryCharge: float64;
+   freeDeliveryAbove: float64;
+   gstNumber: text;
+   servicePincodes: vec text;
+   taxEnabled: bool;
+   taxPercentage: float64;
+   whatsappNumber: text;
+ };
+type AdminUserRecord = 
+ record {
+   "principal": principal;
+   profile: UserProfile;
+ };
+service : {
+  _initializeAccessControl: () -> ();
+  addCoupon: (coupon: Coupon) -> ();
+  addDeliveryRider: (rider: DeliveryRider) -> ();
+  addIngredient: (item: IngredientItem) -> ();
+  addMenuItem: (item: MenuItem) -> ();
+  adminCancelSubscription: (id: nat) -> ();
+  adminCreateSubscription: (userId: principal, plan: SubscriptionPlan,
+   totalSalads: nat, remainingSalads: nat, startDate: int, endDate: int,
+   status: SubscriptionStatus) -> (nat);
+  adminCreateUser: (user: principal, profile: UserProfile) -> ();
+  adminDeleteReview: (id: nat) -> ();
+  adminDeleteSubscription: (id: nat) -> ();
+  adminDeleteUser: (user: principal) -> ();
+  adminExtendSubscription: (id: nat, newEndDate: int, additionalSalads:
+   nat) -> ();
+  adminGetAllReviews: () -> (vec Review) query;
+  adminGetAllUsers: () -> (vec AdminUserRecord) query;
+  adminPauseSubscription: (id: nat) -> ();
+  adminUpdateReview: (id: nat, status: ReviewStatus, profession: opt text) ->
+   ();
+  adminUpdateSubscription: (id: nat, plan: SubscriptionPlan, totalSalads:
+   nat, remainingSalads: nat, startDate: int, endDate: int, status:
+   SubscriptionStatus) -> ();
+  adminUpdateUser: (user: principal, profile: UserProfile) -> ();
+  applyCoupon: (code: text) -> (float64);
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  assignRiderToOrder: (orderId: nat, riderId: nat) -> ();
+  cancelSubscription: () -> ();
+  createBowlIngredient: (name: text, category: BowlIngredientCategory,
+   priceRs: float64, weightG: nat, calories: nat, inventoryItemId: opt nat,
+   imageData: opt text) -> (nat);
+  createBowlSize: (name: text, basePriceRs: float64, baseWeightG: nat,
+   maxVegetables: nat, maxProteins: nat, maxDressings: nat) -> (nat);
+  createOrUpdateProfile: (profile: UserProfile) -> ();
+  createSubscriptionPlanTemplate: (name: text, durationType: DurationType,
+   saladCount: nat, price: float64, deliveryFrequency: DeliveryFrequency,
+   features: vec text, badge: opt text) -> (nat);
+  deleteBowlIngredient: (id: nat) -> ();
+  deleteBowlSize: (id: nat) -> ();
+  deleteCoupon: (id: nat) -> ();
+  deleteIngredient: (id: nat) -> ();
+  deleteMenuItem: (id: nat) -> ();
+  deleteSubscriptionPlanTemplate: (id: nat) -> ();
+  getActiveCoupons: () -> (vec Coupon) query;
+  getActiveSubscriptionPlanTemplates: () ->
+   (vec SubscriptionPlanTemplate) query;
+  getAllBowlIngredients: () -> (vec BowlIngredient) query;
+  getAllBowlSizes: () -> (vec BowlSize) query;
+  getAllCoupons: () -> (vec Coupon) query;
+  getAllDeliveryRiders: () -> (vec DeliveryRider) query;
+  getAllIngredients: () -> (vec IngredientItem) query;
+  getAllMenuItems: () -> (vec MenuItem) query;
+  getAllOrderDeliveries: () -> (vec OrderDelivery) query;
+  getAllOrders: () -> (vec Order) query;
+  getAllSaladIngredients: () ->
+   (vec record {
+          ingredients: vec SaladIngredient;
+          saladId: nat;
+        }) query;
+  getAllSubscriptionPlanTemplates: () -> (vec SubscriptionPlanTemplate) query;
+  getAllSubscriptions: () -> (vec Subscription) query;
+  getAppSettings: () -> (AppSettings) query;
+  getApprovedReviews: () -> (vec Review) query;
+  getBowlIngredientsByCategory: (category: BowlIngredientCategory) ->
+   (vec BowlIngredient) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getDashboardStats: () -> (DashboardStats) query;
+  getMenuItemById: (id: nat) -> (opt MenuItem) query;
+  getMenuItemsByCategory: (category: text) -> (vec MenuItem) query;
+  getMyOrders: () -> (vec Order) query;
+  getMyProfile: () -> (opt UserProfile) query;
+  getMySubscription: () -> (opt Subscription) query;
+  getNextReviewId: () -> (int) query;
+  getOrderById: (orderId: nat) -> (opt Order) query;
+  getOrderDelivery: (orderId: nat) -> (opt OrderDelivery) query;
+  getReviewCount: () -> (int) query;
+  getSaladIngredients: (saladId: nat) -> (vec SaladIngredient) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  isCallerAdmin: () -> (bool) query;
+  placeOrder: (items: vec OrderItem, totalAmount: float64, notes:
+   opt text) -> (nat);
+  saveAppSettings: (settings: AppSettings) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  setSaladIngredients: (saladId: nat, ingredientList: vec SaladIngredient) ->
+   ();
+  submitReview: (reviewerName: text, profession: opt text, rating: nat,
+   reviewText: text) -> (nat);
+  subscribeToPlan: (plan: SubscriptionPlan) -> (nat);
+  subscribeToPlanTemplate: (templateId: nat) -> (nat);
+  toggleAvailability: (id: nat) -> ();
+  toggleBowlIngredientStatus: (id: nat) -> ();
+  toggleBowlSizeStatus: (id: nat) -> ();
+  toggleSubscriptionPlanTemplateStatus: (id: nat) -> ();
+  updateBowlIngredient: (id: nat, name: text, category:
+   BowlIngredientCategory, priceRs: float64, weightG: nat, calories: 
+   nat, inventoryItemId: opt nat, imageData: opt text) -> ();
+  updateBowlSize: (id: nat, name: text, basePriceRs: float64, baseWeightG:
+   nat, maxVegetables: nat, maxProteins: nat, maxDressings: nat) -> ();
+  updateCoupon: (coupon: Coupon) -> ();
+  updateDeliveryRider: (rider: DeliveryRider) -> ();
+  updateDeliveryStatus: (orderId: nat, deliveryStatus: text) -> ();
+  updateIngredient: (item: IngredientItem) -> ();
+  updateMenuItem: (item: MenuItem) -> ();
+  updateOrderStatus: (orderId: nat, status: OrderStatus) -> ();
+  updateSubscriptionPlanTemplate: (id: nat, name: text, durationType:
+   DurationType, saladCount: nat, price: float64, deliveryFrequency:
+   DeliveryFrequency, features: vec text, badge: opt text, active: bool) ->
+   ();
+}

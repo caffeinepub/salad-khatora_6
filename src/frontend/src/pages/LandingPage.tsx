@@ -151,7 +151,7 @@ export default function LandingPage() {
         </div>
 
         <div className="container mx-auto px-4 py-16 md:py-24 relative">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="max-w-2xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -164,12 +164,12 @@ export default function LandingPage() {
                 Fresh Salads.{" "}
                 <span className="text-green-200">Healthy Daily Meals.</span>
               </h1>
-              <p className="text-white/80 text-lg mb-8 leading-relaxed max-w-md">
+              <p className="text-white/80 text-lg mb-8 leading-relaxed">
                 Hand-crafted salads with fresh seasonal ingredients. Build your
                 perfect customizable bowl or choose a subscription meal plan —
                 delivered fresh, every day.
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap justify-center gap-4">
                 <Button
                   size="lg"
                   className="bg-white text-primary hover:bg-white/90 font-semibold shadow-lg gap-2"
@@ -198,7 +198,7 @@ export default function LandingPage() {
               </div>
 
               {/* Social proof */}
-              <div className="flex items-center gap-2 mt-8">
+              <div className="flex items-center justify-center gap-2 mt-8">
                 <div className="flex -space-x-2">
                   {["AK", "HR", "SM"].map((initials) => (
                     <div
@@ -213,67 +213,6 @@ export default function LandingPage() {
                   <strong className="text-white">10,000+</strong> happy
                   customers
                 </p>
-              </div>
-            </motion.div>
-
-            {/* Hero image */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative flex items-center justify-center"
-            >
-              <div className="relative w-full">
-                <div className="absolute inset-0 rounded-3xl bg-white/10 blur-3xl transform scale-110" />
-                <img
-                  src="/assets/generated/hero-salad-bowl.dim_1200x900.jpg"
-                  alt="Fresh Salad Bowl"
-                  className="relative rounded-3xl w-full max-h-[440px] object-cover aspect-[4/3] shadow-2xl ring-1 ring-white/20"
-                  onError={(e) => {
-                    const t = e.currentTarget;
-                    if (!t.src.includes("default-food")) {
-                      t.src = DEFAULT_FOOD_IMG;
-                    }
-                  }}
-                />
-                {/* Floating calorie badge */}
-                <motion.div
-                  animate={{ y: [-4, 4, -4] }}
-                  transition={{
-                    repeat: Number.POSITIVE_INFINITY,
-                    duration: 3,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -bottom-4 -left-4 bg-white rounded-2xl px-4 py-3 shadow-xl"
-                >
-                  <p className="text-xs text-muted-foreground font-medium">
-                    Avg. Calories
-                  </p>
-                  <p className="font-display text-2xl font-bold text-primary">
-                    320 kcal
-                  </p>
-                </motion.div>
-                <motion.div
-                  animate={{ y: [4, -4, 4] }}
-                  transition={{
-                    repeat: Number.POSITIVE_INFINITY,
-                    duration: 3.5,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -top-4 -right-4 bg-white rounded-2xl px-4 py-3 shadow-xl"
-                >
-                  <div className="flex items-center gap-1">
-                    {["s1", "s2", "s3", "s4", "s5"].map((k) => (
-                      <Star
-                        key={k}
-                        className="h-3 w-3 fill-amber-400 text-amber-400"
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    4.9 / 5 stars
-                  </p>
-                </motion.div>
               </div>
             </motion.div>
           </div>

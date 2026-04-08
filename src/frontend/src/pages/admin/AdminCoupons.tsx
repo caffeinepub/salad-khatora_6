@@ -1,5 +1,3 @@
-import type { Coupon } from "@/backend";
-import { CouponDiscountType } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +30,8 @@ import {
   useDeleteCoupon,
   useUpdateCoupon,
 } from "@/hooks/useAdminQueries";
+import type { Coupon } from "@/types/backend-types";
+import { CouponDiscountType } from "@/types/enums";
 import { Loader2, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";

@@ -1,4 +1,3 @@
-import { ReviewStatus } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +24,7 @@ import {
   useAdminDeleteReview,
   useAdminUpdateReview,
 } from "@/hooks/useReviewQueries";
+import { ReviewStatus } from "@/types/enums";
 import {
   Check,
   Loader2,
@@ -326,7 +326,10 @@ export default function AdminReviews() {
                           size="sm"
                           className="h-8 px-2 hover:bg-emerald-50 hover:text-emerald-600 text-xs gap-1"
                           onClick={() =>
-                            handleApprove(review.id, review.profession)
+                            handleApprove(
+                              review.id,
+                              review.profession ?? undefined,
+                            )
                           }
                           disabled={updateReview.isPending}
                           data-ocid="admin.reviews.approve_button"
@@ -343,7 +346,10 @@ export default function AdminReviews() {
                           size="sm"
                           className="h-8 px-2 hover:bg-red-50 hover:text-red-600 text-xs gap-1"
                           onClick={() =>
-                            handleReject(review.id, review.profession)
+                            handleReject(
+                              review.id,
+                              review.profession ?? undefined,
+                            )
                           }
                           disabled={updateReview.isPending}
                           title="Reject"
@@ -361,7 +367,7 @@ export default function AdminReviews() {
                           openEditProfession(
                             review.id,
                             review.status,
-                            review.profession,
+                            review.profession ?? undefined,
                           )
                         }
                         title="Edit profession"

@@ -11,15 +11,13 @@ import type {
   MenuItem,
   Order,
   OrderDelivery,
+  OrderStatus,
   SaladIngredient,
   Subscription,
-  UserProfile,
-} from "../backend";
-import type {
-  OrderStatus,
   SubscriptionPlan,
   SubscriptionStatus,
-} from "../backend";
+  UserProfile,
+} from "../types/backend-types";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
 
@@ -31,7 +29,7 @@ export function useDashboardStats() {
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       if (!actor) throw new Error("Not connected");
-      return actor.getDashboardStats();
+      return (actor as any).getDashboardStats();
     },
     enabled: !!actor && !isFetching,
   });
@@ -45,7 +43,7 @@ export function useAllOrders() {
     queryKey: ["allOrders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllOrders();
+      return (actor as any).getAllOrders();
     },
     enabled: !!actor && !isFetching,
   });
@@ -63,7 +61,7 @@ export function useUpdateOrderStatus() {
       status: OrderStatus;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.updateOrderStatus(orderId, status);
+      await (actor as any).updateOrderStatus(orderId, status);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allOrders"] });
@@ -79,7 +77,7 @@ export function useAllSubscriptions() {
     queryKey: ["allSubscriptions"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllSubscriptions();
+      return (actor as any).getAllSubscriptions();
     },
     enabled: !!actor && !isFetching,
   });
@@ -99,7 +97,7 @@ export function useAdminCreateSubscription() {
       status: SubscriptionStatus;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.adminCreateSubscription(
+      return (actor as any).adminCreateSubscription(
         args.userId,
         args.plan,
         args.totalSalads,
@@ -129,7 +127,7 @@ export function useAdminUpdateSubscription() {
       status: SubscriptionStatus;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminUpdateSubscription(
+      await (actor as any).adminUpdateSubscription(
         args.id,
         args.plan,
         args.totalSalads,
@@ -151,7 +149,7 @@ export function useAdminPauseSubscription() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminPauseSubscription(id);
+      await (actor as any).adminPauseSubscription(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
@@ -169,7 +167,7 @@ export function useAdminExtendSubscription() {
       additionalSalads: bigint;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminExtendSubscription(
+      await (actor as any).adminExtendSubscription(
         args.id,
         args.newEndDate,
         args.additionalSalads,
@@ -187,7 +185,7 @@ export function useAdminCancelSubscription() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminCancelSubscription(id);
+      await (actor as any).adminCancelSubscription(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
@@ -201,7 +199,7 @@ export function useAdminDeleteSubscription() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminDeleteSubscription(id);
+      await (actor as any).adminDeleteSubscription(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allSubscriptions"] });
@@ -217,7 +215,7 @@ export function useAllIngredients() {
     queryKey: ["allIngredients"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllIngredients();
+      return (actor as any).getAllIngredients();
     },
     enabled: !!actor && !isFetching,
   });
@@ -229,7 +227,7 @@ export function useAddIngredient() {
   return useMutation({
     mutationFn: async (item: IngredientItem) => {
       if (!actor) throw new Error("Not connected");
-      await actor.addIngredient(item);
+      await (actor as any).addIngredient(item);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allIngredients"] });
@@ -243,7 +241,7 @@ export function useUpdateIngredient() {
   return useMutation({
     mutationFn: async (item: IngredientItem) => {
       if (!actor) throw new Error("Not connected");
-      await actor.updateIngredient(item);
+      await (actor as any).updateIngredient(item);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allIngredients"] });
@@ -257,7 +255,7 @@ export function useDeleteIngredient() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.deleteIngredient(id);
+      await (actor as any).deleteIngredient(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allIngredients"] });
@@ -273,7 +271,7 @@ export function useAllCoupons() {
     queryKey: ["allCoupons"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllCoupons();
+      return (actor as any).getAllCoupons();
     },
     enabled: !!actor && !isFetching,
   });
@@ -285,7 +283,7 @@ export function useAddCoupon() {
   return useMutation({
     mutationFn: async (coupon: Coupon) => {
       if (!actor) throw new Error("Not connected");
-      await actor.addCoupon(coupon);
+      await (actor as any).addCoupon(coupon);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allCoupons"] });
@@ -299,7 +297,7 @@ export function useUpdateCoupon() {
   return useMutation({
     mutationFn: async (coupon: Coupon) => {
       if (!actor) throw new Error("Not connected");
-      await actor.updateCoupon(coupon);
+      await (actor as any).updateCoupon(coupon);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allCoupons"] });
@@ -313,7 +311,7 @@ export function useDeleteCoupon() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.deleteCoupon(id);
+      await (actor as any).deleteCoupon(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allCoupons"] });
@@ -329,7 +327,7 @@ export function useAllDeliveryRiders() {
     queryKey: ["allDeliveryRiders"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllDeliveryRiders();
+      return (actor as any).getAllDeliveryRiders();
     },
     enabled: !!actor && !isFetching,
   });
@@ -341,7 +339,7 @@ export function useAddDeliveryRider() {
   return useMutation({
     mutationFn: async (rider: DeliveryRider) => {
       if (!actor) throw new Error("Not connected");
-      await actor.addDeliveryRider(rider);
+      await (actor as any).addDeliveryRider(rider);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allDeliveryRiders"] });
@@ -355,7 +353,7 @@ export function useUpdateDeliveryRider() {
   return useMutation({
     mutationFn: async (rider: DeliveryRider) => {
       if (!actor) throw new Error("Not connected");
-      await actor.updateDeliveryRider(rider);
+      await (actor as any).updateDeliveryRider(rider);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allDeliveryRiders"] });
@@ -369,7 +367,7 @@ export function useAllOrderDeliveries() {
     queryKey: ["allOrderDeliveries"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllOrderDeliveries();
+      return (actor as any).getAllOrderDeliveries();
     },
     enabled: !!actor && !isFetching,
   });
@@ -387,7 +385,7 @@ export function useAssignRiderToOrder() {
       riderId: bigint;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.assignRiderToOrder(orderId, riderId);
+      await (actor as any).assignRiderToOrder(orderId, riderId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allOrderDeliveries"] });
@@ -441,7 +439,7 @@ export function useAllUsers() {
     queryKey: ["allUsers"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.adminGetAllUsers();
+      return (actor as any).adminGetAllUsers();
     },
     enabled: !!actor && !isFetching,
   });
@@ -459,7 +457,7 @@ export function useAdminCreateUser() {
       profile: UserProfile;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminCreateUser(user, profile);
+      await (actor as any).adminCreateUser(user, profile);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
@@ -479,7 +477,7 @@ export function useAdminUpdateUser() {
       profile: UserProfile;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminUpdateUser(user, profile);
+      await (actor as any).adminUpdateUser(user, profile);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
@@ -493,7 +491,7 @@ export function useAdminDeleteUser() {
   return useMutation({
     mutationFn: async (user: Principal) => {
       if (!actor) throw new Error("Not connected");
-      await actor.adminDeleteUser(user);
+      await (actor as any).adminDeleteUser(user);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allUsers"] });
@@ -509,7 +507,7 @@ export function useAllMenuItems() {
     queryKey: ["allMenuItems"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllMenuItems();
+      return (actor as any).getAllMenuItems();
     },
     enabled: !!actor && !isFetching,
   });
@@ -521,7 +519,7 @@ export function useAddMenuItem() {
   return useMutation({
     mutationFn: async (item: MenuItem) => {
       if (!actor) throw new Error("Not connected");
-      await actor.addMenuItem(item);
+      await (actor as any).addMenuItem(item);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
@@ -535,7 +533,7 @@ export function useUpdateMenuItem() {
   return useMutation({
     mutationFn: async (item: MenuItem) => {
       if (!actor) throw new Error("Not connected");
-      await actor.updateMenuItem(item);
+      await (actor as any).updateMenuItem(item);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
@@ -549,7 +547,7 @@ export function useDeleteMenuItem() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.deleteMenuItem(id);
+      await (actor as any).deleteMenuItem(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
@@ -563,7 +561,7 @@ export function useToggleAvailability() {
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.toggleAvailability(id);
+      await (actor as any).toggleAvailability(id);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["allMenuItems"] });
@@ -579,7 +577,7 @@ export function useGetSaladIngredients(saladId: bigint | null) {
     queryKey: ["saladIngredients", saladId?.toString()],
     queryFn: async () => {
       if (!actor || saladId === null) return [];
-      return actor.getSaladIngredients(saladId);
+      return (actor as any).getSaladIngredients(saladId);
     },
     enabled: !!actor && !isFetching && saladId !== null,
   });
@@ -593,7 +591,7 @@ export function useGetAllSaladIngredients() {
     queryKey: ["allSaladIngredients"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllSaladIngredients();
+      return (actor as any).getAllSaladIngredients();
     },
     enabled: !!actor && !isFetching,
   });
@@ -611,7 +609,7 @@ export function useSetSaladIngredients() {
       ingredientList: Array<SaladIngredient>;
     }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.setSaladIngredients(saladId, ingredientList);
+      await (actor as any).setSaladIngredients(saladId, ingredientList);
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
@@ -630,7 +628,7 @@ export function useAppSettings() {
     queryKey: ["appSettings"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      return actor.getAppSettings();
+      return (actor as any).getAppSettings();
     },
     enabled: !!actor && !isFetching,
   });
@@ -642,7 +640,7 @@ export function useSaveAppSettings() {
   return useMutation({
     mutationFn: async (settings: AppSettings) => {
       if (!actor) throw new Error("Not connected");
-      await actor.saveAppSettings(settings);
+      await (actor as any).saveAppSettings(settings);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["appSettings"] });
@@ -719,7 +717,7 @@ export function useIsCallerAdmin() {
         // isCallerAdmin() may throw a backend trap if the user is not yet
         // registered (i.e. _initializeAccessControlWithSecret hasn't been
         // called yet). Treat any error as "not admin" and retry.
-        const result = await actor.isCallerAdmin();
+        const result = await (actor as any).isCallerAdmin();
         console.log("Logged user isAdmin:", result, "principal:", principal);
         if (result) {
           storeAdminPrincipal(principal);

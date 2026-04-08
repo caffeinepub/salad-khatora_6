@@ -1,4 +1,3 @@
-import type { DeliveryRider } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +33,7 @@ import {
   useUpdateDeliveryStatus,
 } from "@/hooks/useAdminQueries";
 import { useAllOrders } from "@/hooks/useAdminQueries";
+import type { DeliveryRider } from "@/types/backend-types";
 import { Loader2, Pencil, Plus, Truck } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
@@ -394,7 +394,7 @@ export default function AdminDelivery() {
                         </span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {formatDate(delivery.assignedAt)}
+                        {formatDate(delivery.assignedAt ?? undefined)}
                       </TableCell>
                       <TableCell>
                         <Select
