@@ -196,24 +196,6 @@ export default function LandingPage() {
                   </Link>
                 </Button>
               </div>
-
-              {/* Social proof */}
-              <div className="flex items-center justify-center gap-2 mt-8">
-                <div className="flex -space-x-2">
-                  {["AK", "HR", "SM"].map((initials) => (
-                    <div
-                      key={initials}
-                      className="w-8 h-8 rounded-full bg-white/30 border-2 border-white/50 flex items-center justify-center text-[10px] font-bold"
-                    >
-                      {initials}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-white/80 text-sm">
-                  <strong className="text-white">10,000+</strong> happy
-                  customers
-                </p>
-              </div>
             </motion.div>
           </div>
         </div>
